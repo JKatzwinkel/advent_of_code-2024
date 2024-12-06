@@ -31,7 +31,7 @@ def test_load() -> None:
         game = load(f)
     assert game.board.width == 10
     assert game.board.height == 10
-    assert game.guard.pos == (4, 1)
+    assert game.guard.pos == (4, 6)
 
 
 class Game:
@@ -72,7 +72,7 @@ class Guard:
         self.pos = pos
         self.dir = 0
         self.board = board
-        self.steps = 1
+        self.visited = {self.pos}
 
     def tile_ahead(self) -> tuple[int, int]:
         v = DIRS[self.dir % 4]
@@ -83,10 +83,22 @@ class Guard:
         while self.board[self.tile_ahead()] == '#':
             self.dir += 1
         self.pos = self.tile_ahead()
-        self.steps += 1
+        if self.pos in self.board:
+            self.visited.add(self.pos)
 
     def outside(self) -> bool:
         return self.pos not in self.board
+
+    @property
+    def steps(self) -> int:
+        return len(self.visited)
+
+
+def test_move_guard() -> None:
+    with open('test.txt') as f:
+        game = load(f)
+    game.guard.move()
+    assert game.guard.steps == 2
 
 
 def test_test_input() -> None:
