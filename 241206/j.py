@@ -107,3 +107,11 @@ def test_test_input() -> None:
     while not game.guard.outside():
         game.guard.move()
     assert game.guard.steps == 41
+
+
+if __name__ == '__main__':
+    with open('input.txt') as f:
+        game = load(f)
+    while not game.guard.outside():
+        game.guard.move()
+    print(game.guard.steps)
