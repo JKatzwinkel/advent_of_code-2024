@@ -6,6 +6,7 @@ from enum import Enum
 from io import TextIOBase
 from typing import Self
 
+import tqdm
 
 DIRS = [(0, -1), (1, 0), (0, 1), (-1, 0)]
 
@@ -38,36 +39,48 @@ def test_load() -> None:
     assert game.guard.pos == (4, 6)
 
 
-def _contains_sequence(
-    trail: list[tuple[int, int]], seq: list[tuple[int, int]]
-) -> bool:
-    def _match(
-        seq1: list[tuple[int, int]], seq2: list[tuple[int, int]]
-    ) -> bool:
-        for pair in zip(seq1, seq2):
-            if len(set(pair)) > 1:
-                return False
-        return True
-    for i in range(0, len(trail) - len(seq) + 1):
-        if _match(trail[i:i+len(seq)], seq):
-            return True
-    return False
+def _find_all(
+    trail: list[tuple[int, int]], elem: tuple[int, int]
+) -> list[int]:
+    result = []
+    start = 0
+    while start < len(trail):
+        try:
+            result.append(i := trail.index(elem, start))
+            start = i + 1
+        except ValueError:
+            break
+    return result
 
 
 def contains_loop(trail: list[tuple[int, int]]) -> bool:
-    for i in range(2, len(trail) // 2):
-        if _contains_sequence(trail[:-i], trail[-i:]):
+    def _still_fits(index: int, offset: int) -> bool:
+        if index - offset < 0:
+            return False
+        return trail[index - offset] == trail[-(offset + 1)]
+    candidates = _find_all(trail[:-1], trail[-1])
+    offset = 1
+    while len(candidates) > 0:
+        if len(trail) - offset <= candidates[-1] + 1:
             return True
+        candidates = [
+            index for index in candidates
+            if _still_fits(index, offset)
+        ]
+        offset += 1
     return False
 
 
 def test_contains_loop() -> None:
-    assert _contains_sequence(
-       [(0, 1), (1, 1), (2, 1), (2, 2), (1, 2)],
-       [(2, 2), (1, 2)]
-    )
+    assert _find_all(
+       [(0, 1), (1, 1), (2, 1), (2, 2), (1, 2), (1, 1), (1, 0)],
+       (1, 1)
+    ) == [1, 5]
     assert contains_loop(
-       [(0, 1), (1, 1), (2, 1), (2, 2), (1, 2), (1, 1), (2, 1)]
+       [
+           (0, 1), (1, 1), (2, 1), (2, 2), (1, 2), (1, 1), (2, 1),
+           (2, 2), (1, 2)
+        ]
     )
     assert not contains_loop(
         [
@@ -229,11 +242,14 @@ def find_obstacle_placements(filename: str) -> list[tuple[int, int]]:
     orig = copy(game)
     assert game.loop() == State.LEFT
     results = []
+    pb = tqdm.tqdm(total=game.guard.tiles_visited)
     for pos in [p for p in game.guard.visited][1:]:
+        pb.update(1)
         if not (variant := orig.with_obstacle(pos)):
             continue
         if variant.loop() == State.STUCK:
             results.append(pos)
+    pb.close()
     return results
 
 
@@ -245,6 +261,10 @@ def test_find_obstacle_placements() -> None:
 if __name__ == '__main__':
     with open('input.txt') as f:
         game = load(f)
-    while not game.guard.outside():
-        game.guard.move()
-    print(game.guard.steps)
+    assert game.loop() == State.LEFT
+    print(f'tiles patrolled by guard: {game.guard.tiles_visited}')
+    positions = find_obstacle_placements('input.txt')
+    print(
+        'possible position for obstacles resulting in infinite loop: '
+        f'{len(positions)}'
+    )
