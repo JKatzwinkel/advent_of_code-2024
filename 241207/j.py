@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from enum import Enum
 from io import StringIO, TextIOBase
 import itertools
 from typing import Self
@@ -89,3 +88,10 @@ def test_sum_of_solvable(example_input: str) -> None:
     equations = load_equations(StringIO(example_input))
     result = sum(eq.result for eq in equations if eq.is_solvable())
     assert result == 3749
+
+
+if __name__ == '__main__':
+    with open('input.txt') as f:
+        equations = load_equations(f)
+    result = sum(eq.result for eq in equations if eq.is_solvable())
+    print(f'sum of solvable equations: {result}')
