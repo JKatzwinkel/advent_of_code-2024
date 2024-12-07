@@ -188,12 +188,12 @@ class Guard:
         return self.pos not in self.game.board
 
     def stuck(self) -> bool:
-        if not self.visited.total() > len(self.visited):
+        if not self.visited.total() > self.tiles_visited:
             return False
         return contains_loop(self.trail)
 
     @property
-    def steps(self) -> int:
+    def tiles_visited(self) -> int:
         return len(self.visited)
 
     def __copy__(self) -> Self:
@@ -207,20 +207,39 @@ def test_move_guard() -> None:
     with open('test.txt') as f:
         game = load(f)
     game.guard.move()
-    assert game.guard.steps == 2
+    assert game.guard.tiles_visited == 2
 
 
 def test_test_input() -> None:
     with open('test.txt') as f:
         game = load(f)
     assert game.loop() == State.LEFT
-    assert game.guard.steps == 41
+    assert game.guard.tiles_visited == 41
 
 
 def test_get_guard_stuck() -> None:
     with open('test.txt') as f:
         game = load(f).with_obstacle((3, 6))
     assert game.loop() == State.STUCK
+
+
+def find_obstacle_placements(filename: str) -> list[tuple[int, int]]:
+    with open(filename) as f:
+        game = load(f)
+    orig = copy(game)
+    assert game.loop() == State.LEFT
+    results = []
+    for pos in [p for p in game.guard.visited][1:]:
+        if not (variant := orig.with_obstacle(pos)):
+            continue
+        if variant.loop() == State.STUCK:
+            results.append(pos)
+    return results
+
+
+def test_find_obstacle_placements() -> None:
+    positions = find_obstacle_placements('test.txt')
+    assert len(positions) == 6
 
 
 if __name__ == '__main__':
