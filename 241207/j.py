@@ -53,7 +53,7 @@ class Equation:
 
     def operations(self) -> list[tuple[str, ...]]:
         return list(itertools.product(
-            *(['+*'] * len(self.operands))
+            *(['+*'] * (len(self.operands) - 1))
         ))
 
     def solve(self, operations: tuple[str, ...]) -> int:
@@ -75,7 +75,7 @@ class Equation:
 
 def test_get_possible_operations() -> None:
     eq = Equation.of('190: 10 19')
-    assert len(eq.operations()) == 4
+    assert len(eq.operations()) == 2
     assert eq.solve(('*',)) == 190
 
 
