@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import Counter
 from copy import copy
 from enum import Enum
 from io import TextIOBase
@@ -35,6 +36,44 @@ def test_load() -> None:
     assert game.board.width == 10
     assert game.board.height == 10
     assert game.guard.pos == (4, 6)
+
+
+def _contains_sequence(
+    trail: list[tuple[int, int]], seq: list[tuple[int, int]]
+) -> bool:
+    def _match(
+        seq1: list[tuple[int, int]], seq2: list[tuple[int, int]]
+    ) -> bool:
+        for pair in zip(seq1, seq2):
+            if len(set(pair)) > 1:
+                return False
+        return True
+    for i in range(0, len(trail) - len(seq) + 1):
+        if _match(trail[i:i+len(seq)], seq):
+            return True
+    return False
+
+
+def contains_loop(trail: list[tuple[int, int]]) -> bool:
+    for i in range(2, len(trail) // 2):
+        if _contains_sequence(trail[:-i], trail[-i:]):
+            return True
+    return False
+
+
+def test_contains_loop() -> None:
+    assert _contains_sequence(
+       [(0, 1), (1, 1), (2, 1), (2, 2), (1, 2)],
+       [(2, 2), (1, 2)]
+    )
+    assert contains_loop(
+       [(0, 1), (1, 1), (2, 1), (2, 2), (1, 2), (1, 1), (2, 1)]
+    )
+    assert not contains_loop(
+        [
+            (1, 1), (2, 1), (3, 1), (3, 2), (2, 2), (2, 1), (2, 0)
+        ]
+    )
 
 
 class State(Enum):
@@ -129,7 +168,8 @@ class Guard:
         self.pos = pos
         self.dir = 0
         self.game = game
-        self.visited = {self.pos}
+        self.visited = Counter({pos})
+        self.trail = []
 
     def tile_ahead(self) -> tuple[int, int]:
         v = DIRS[self.dir % 4]
@@ -139,15 +179,18 @@ class Guard:
     def move(self) -> None:
         while self.game.board[self.tile_ahead()] == '#':
             self.dir += 1
+        self.trail.append(self.pos)
         self.pos = self.tile_ahead()
         if self.pos in self.game.board:
-            self.visited.add(self.pos)
+            self.visited[self.pos] += 1
 
     def outside(self) -> bool:
         return self.pos not in self.game.board
 
     def stuck(self) -> bool:
-        return False
+        if not self.visited.total() > len(self.visited):
+            return False
+        return contains_loop(self.trail)
 
     @property
     def steps(self) -> int:
@@ -172,6 +215,12 @@ def test_test_input() -> None:
         game = load(f)
     assert game.loop() == State.LEFT
     assert game.guard.steps == 41
+
+
+def test_get_guard_stuck() -> None:
+    with open('test.txt') as f:
+        game = load(f).with_obstacle((3, 6))
+    assert game.loop() == State.STUCK
 
 
 if __name__ == '__main__':
