@@ -40,6 +40,8 @@ def test_load_equations(example_input: str) -> None:
 
 
 class Equation:
+    OPERATORS = ['+', '*', '||']
+
     def __init__(self, result: int, operands: list[int]):
         self.result = result
         self.operands = operands
@@ -51,9 +53,11 @@ class Equation:
             int(segm[0]), list(map(int, segm[1].split()))
         )
 
-    def operations(self) -> list[tuple[str, ...]]:
+    def operations(
+        self, operators: list[str] = OPERATORS
+    ) -> list[tuple[str, ...]]:
         return list(itertools.product(
-            *(['+*'] * (len(self.operands) - 1))
+            *([operators] * (len(self.operands) - 1))
         ))
 
     def solve(self, operations: tuple[str, ...]) -> int:
@@ -64,19 +68,34 @@ class Equation:
                     result += operand
                 case '*':
                     result *= operand
+                case '||':
+                    result = result * 10 ** len(f'{operand}') + operand
         return result
 
-    def is_solvable(self) -> bool:
+    def is_solvable(self, operators: list[str] = OPERATORS) -> bool:
         return any(
-            self.solve(operators) == self.result
-            for operators in self.operations()
+            self.solve(operations) == self.result
+            for operations in self.operations(operators)
         )
+
+
+def sum_solvable(
+    equations: list[Equation], operators: list[str] = Equation.OPERATORS
+) -> int:
+    return sum(
+        eq.result for eq in equations if eq.is_solvable(operators)
+    )
 
 
 def test_get_possible_operations() -> None:
     eq = Equation.of('190: 10 19')
-    assert len(eq.operations()) == 2
+    assert len(eq.operations()) == 3
     assert eq.solve(('*',)) == 190
+
+
+def test_concatenation_operator() -> None:
+    assert Equation.of('156: 15 6').solve(('||',)) == 156
+    assert Equation.of('7290: 6 8 6 15').is_solvable()
 
 
 def test_is_solvable() -> None:
@@ -86,12 +105,16 @@ def test_is_solvable() -> None:
 
 def test_sum_of_solvable(example_input: str) -> None:
     equations = load_equations(StringIO(example_input))
-    result = sum(eq.result for eq in equations if eq.is_solvable())
+    result = sum_solvable(equations, ['+', '*'])
     assert result == 3749
 
 
 if __name__ == '__main__':
     with open('input.txt') as f:
         equations = load_equations(f)
-    result = sum(eq.result for eq in equations if eq.is_solvable())
-    print(f'sum of solvable equations: {result}')
+    result = sum_solvable(equations, ['*', '+'])
+    print(f'sum of equations solvable with only + and *: {result}')
+    result = sum_solvable(equations)
+    print(
+        f'sum of equations solvable with concatenation operator: {result}'
+    )
