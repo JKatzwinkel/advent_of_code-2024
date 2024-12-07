@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from io import StringIO, TextIOBase
 import itertools
+from math import log10, floor
 from typing import Self
 
 import pytest
@@ -69,7 +70,10 @@ class Equation:
                 case '*':
                     result *= operand
                 case '||':
-                    result = result * 10 ** len(f'{operand}') + operand
+                    result = (
+                        10 ** (floor(log10(operand)) + 1)
+                        * result + operand
+                    )
         return result
 
     def is_solvable(self, operators: list[str] = OPERATORS) -> bool:
