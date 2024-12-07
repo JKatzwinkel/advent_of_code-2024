@@ -88,9 +88,9 @@ def sum_solvable(
 
 
 def test_get_possible_operations() -> None:
-    eq = Equation.of('190: 10 19')
-    assert len(eq.operations()) == 3
-    assert eq.solve(('*',)) == 190
+    eq = Equation.of('190: 5 5 19')
+    assert len(eq.operations(['+', '*'])) == 4
+    assert eq.solve(('+', '*',)) == 190
 
 
 def test_concatenation_operator() -> None:
@@ -105,8 +105,8 @@ def test_is_solvable() -> None:
 
 def test_sum_of_solvable(example_input: str) -> None:
     equations = load_equations(StringIO(example_input))
-    result = sum_solvable(equations, ['+', '*'])
-    assert result == 3749
+    assert sum_solvable(equations, ['+', '*']) == 3749
+    assert sum_solvable(equations, ['+', '*', '||']) == 11387
 
 
 if __name__ == '__main__':
