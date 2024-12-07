@@ -126,7 +126,7 @@ class Game:
 def test_copy_game_with_obstacle() -> None:
     with open('test.txt') as f:
         game = load(f)
-    copied = game.with_obstacle((3, 6))
+    assert (copied := game.with_obstacle((3, 6)))
     assert copied.board[3, 6] == '#'
     assert game.board[3, 6] == '.'
 
@@ -160,9 +160,7 @@ class Board:
         result.tiles = copy(self.tiles)
         return result
 
-    def with_obstacle(self, pos: tuple[int, int]) -> Self | None:
-        if self[pos] == '#':
-            return None
+    def with_obstacle(self, pos: tuple[int, int]) -> Self:
         result = copy(self)
         result[pos] = 'O'
         return result
@@ -182,7 +180,7 @@ class Guard:
         self.dir = 0
         self.game = game
         self.visited = Counter({pos})
-        self.trail = []
+        self.trail: list[tuple[int, int]] = []
 
     def tile_ahead(self) -> tuple[int, int]:
         v = DIRS[self.dir % 4]
@@ -232,7 +230,7 @@ def test_test_input() -> None:
 
 def test_get_guard_stuck() -> None:
     with open('test.txt') as f:
-        game = load(f).with_obstacle((3, 6))
+        assert (game := load(f).with_obstacle((3, 6)))
     assert game.loop() == State.STUCK
 
 
