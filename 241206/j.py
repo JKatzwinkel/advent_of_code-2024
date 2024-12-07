@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections import Counter
+from collections import defaultdict
 from copy import copy
 from enum import Enum
 from io import TextIOBase
@@ -39,57 +39,8 @@ def test_load() -> None:
     assert game.guard.pos == (4, 6)
 
 
-def _find_all(
-    trail: list[tuple[int, int]], elem: tuple[int, int]
-) -> list[int]:
-    result = []
-    start = 0
-    while start < len(trail):
-        try:
-            result.append(i := trail.index(elem, start))
-            start = i + 1
-        except ValueError:
-            break
-    return result
-
-
-def contains_loop(trail: list[tuple[int, int]]) -> bool:
-    def _still_fits(index: int, offset: int) -> bool:
-        if index - offset < 0:
-            return False
-        return trail[index - offset] == trail[-(offset + 1)]
-    candidates = _find_all(trail[:-1], trail[-1])
-    offset = 1
-    while len(candidates) > 0:
-        if len(trail) - offset <= candidates[-1] + 1:
-            return True
-        candidates = [
-            index for index in candidates
-            if _still_fits(index, offset)
-        ]
-        offset += 1
-    return False
-
-
-def test_contains_loop() -> None:
-    assert _find_all(
-       [(0, 1), (1, 1), (2, 1), (2, 2), (1, 2), (1, 1), (1, 0)],
-       (1, 1)
-    ) == [1, 5]
-    assert contains_loop(
-       [
-           (0, 1), (1, 1), (2, 1), (2, 2), (1, 2), (1, 1), (2, 1),
-           (2, 2), (1, 2)
-        ]
-    )
-    assert not contains_loop(
-        [
-            (1, 1), (2, 1), (3, 1), (3, 2), (2, 2), (2, 1), (2, 0)
-        ]
-    )
-
-
 class State(Enum):
+    MOVE = 0
     LEFT = 1
     STUCK = 2
 
@@ -100,11 +51,9 @@ class Game:
         self.board = None
 
     def loop(self) -> State:
-        while not self.guard.outside() and not self.guard.stuck():
+        while not self.guard.is_done():
             self.guard.move()
-        if self.guard.outside():
-            return State.LEFT
-        return State.STUCK
+        return self.guard.state
 
     def __copy__(self) -> Self:
         result = self.__class__()
@@ -174,34 +123,36 @@ def test_sample_board() -> None:
     assert not game.board[10, 2]
 
 
+def next_tile(pos: tuple[int, int], direction: int) -> tuple[int, int]:
+    v = DIRS[direction % 4]
+    x, y = map(sum, zip(pos, v))
+    return x, y
+
+
 class Guard:
     def __init__(self, game: Game, pos: tuple[int, int]):
         self.pos = pos
         self.dir = 0
         self.game = game
-        self.visited = Counter({pos})
-        self.trail: list[tuple[int, int]] = []
+        self.visited: dict[tuple[int, int], set[int]] = defaultdict(set)
+        self.state = State.MOVE
 
     def tile_ahead(self) -> tuple[int, int]:
-        v = DIRS[self.dir % 4]
-        x, y = map(sum, zip(self.pos, v))
-        return x, y
+        return next_tile(self.pos, self.dir)
 
     def move(self) -> None:
         while self.game.board[self.tile_ahead()] == '#':
             self.dir += 1
-        self.trail.append(self.pos)
+        if self.dir % 4 in self.visited[self.pos]:
+            self.state = State.STUCK
+        else:
+            self.visited[self.pos].add(self.dir % 4)
         self.pos = self.tile_ahead()
-        if self.pos in self.game.board:
-            self.visited[self.pos] += 1
+        if self.pos not in self.game.board:
+            self.state = State.LEFT
 
-    def outside(self) -> bool:
-        return self.pos not in self.game.board
-
-    def stuck(self) -> bool:
-        if not self.visited.total() > self.tiles_visited:
-            return False
-        return contains_loop(self.trail)
+    def is_done(self) -> bool:
+        return self.state is not State.MOVE
 
     @property
     def tiles_visited(self) -> int:
@@ -218,7 +169,8 @@ def test_move_guard() -> None:
     with open('test.txt') as f:
         game = load(f)
     game.guard.move()
-    assert game.guard.tiles_visited == 2
+    assert game.guard.tiles_visited == 1
+    assert game.guard.visited[(4, 6)] == {0}
 
 
 def test_test_input() -> None:
@@ -240,7 +192,9 @@ def find_obstacle_placements(filename: str) -> list[tuple[int, int]]:
     orig = copy(game)
     assert game.loop() == State.LEFT
     results = []
-    pb = tqdm.tqdm(total=game.guard.tiles_visited)
+    pb = tqdm.tqdm(
+        total=game.guard.tiles_visited, mininterval=.5
+    )
     for pos in [p for p in game.guard.visited][1:]:
         pb.update(1)
         if not (variant := orig.with_obstacle(pos)):
