@@ -66,6 +66,10 @@ def vsub(a: tuple[int, int], v: tuple[int, int]) -> tuple[int, int]:
     return a[0] - v[0], a[1] - v[1]
 
 
+def vmul(v: tuple[int, int], i: int) -> tuple[int, int]:
+    return v[0] * i, v[1] * i
+
+
 def test_vectors() -> None:
     a = (2, 7)
     b = (8, 3)
@@ -95,19 +99,27 @@ class Board:
             return False
         return 0 <= y < self.height
 
-    def antinodes(self, freq: str) -> set[tuple[int, int]]:
+    def antinodes(
+        self, freq: str, target_dist: int | None = 2
+    ) -> set[tuple[int, int]]:
         antennas = self[freq]
         result = set()
         for a, b in itertools.permutations(antennas, 2):
-            if (pos := vadd(b, v(a, b))) not in self:
-                continue
-            result.add(pos)
+            if target_dist:
+                if (pos := vadd(a, vmul(v(a, b), target_dist))) in self:
+                    result.add(pos)
+            else:
+                pos = a
+                while (pos := vadd(pos, v(a, b))) in self:
+                    result.add(pos)
         return result
 
-    def all_antinodes(self) -> set[tuple[int, int]]:
+    def all_antinodes(
+        self, /, *, target_dist: int | None = 2
+    ) -> set[tuple[int, int]]:
         result = set()
         for freq in self.frequencies:
-            result.update(self.antinodes(freq))
+            result.update(self.antinodes(freq, target_dist))
         return result
 
 
@@ -120,8 +132,9 @@ def test_place_antinodes_for_single_freq(example_data: StringIO) -> None:
 
 def test_place_antinodes(example_data: StringIO) -> None:
     board = load(example_data)
-    antinodes = board.all_antinodes()
+    antinodes = board.all_antinodes(target_dist=2)
     assert len(antinodes) == 14
+    assert len(board.all_antinodes(target_dist=None)) == 34
 
 
 if __name__ == '__main__':
@@ -129,3 +142,5 @@ if __name__ == '__main__':
         board = load(f)
     antinodes = board.all_antinodes()
     print(f'number of antinodes: {len(antinodes)}')
+    antinodes = board.all_antinodes(target_dist=None)
+    print(f'number of antinodes with resonant harmonics: {len(antinodes)}')
