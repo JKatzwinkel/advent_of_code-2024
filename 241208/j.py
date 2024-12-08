@@ -122,3 +122,10 @@ def test_place_antinodes(example_data: StringIO) -> None:
     board = load(example_data)
     antinodes = board.all_antinodes()
     assert len(antinodes) == 14
+
+
+if __name__ == '__main__':
+    with open('input.txt') as f:
+        board = load(f)
+    antinodes = board.all_antinodes()
+    print(f'number of antinodes: {len(antinodes)}')
