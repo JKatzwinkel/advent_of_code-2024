@@ -62,10 +62,6 @@ def vadd(a: tuple[int, int], v: tuple[int, int]) -> tuple[int, int]:
     return a[0] + v[0], a[1] + v[1]
 
 
-def vsub(a: tuple[int, int], v: tuple[int, int]) -> tuple[int, int]:
-    return a[0] - v[0], a[1] - v[1]
-
-
 def vmul(v: tuple[int, int], i: int) -> tuple[int, int]:
     return v[0] * i, v[1] * i
 
@@ -74,7 +70,7 @@ def test_vectors() -> None:
     a = (2, 7)
     b = (8, 3)
     assert vadd(a, v(a, b)) == b
-    assert vsub(b, v(a, b)) == a
+    assert vadd(b, vmul(v(a, b), -1)) == a
 
 
 class Board:
