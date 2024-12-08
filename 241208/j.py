@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+import itertools
 from io import StringIO, TextIOBase
 
 import pytest
@@ -53,6 +54,25 @@ def test_load(example_data: StringIO) -> None:
     assert board.height == 12
 
 
+def v(a: tuple[int, int], b: tuple[int, int]) -> tuple[int, int]:
+    return b[0] - a[0], b[1] - a[1]
+
+
+def vadd(a: tuple[int, int], v: tuple[int, int]) -> tuple[int, int]:
+    return a[0] + v[0], a[1] + v[1]
+
+
+def vsub(a: tuple[int, int], v: tuple[int, int]) -> tuple[int, int]:
+    return a[0] - v[0], a[1] - v[1]
+
+
+def test_vectors() -> None:
+    a = (2, 7)
+    b = (8, 3)
+    assert vadd(a, v(a, b)) == b
+    assert vsub(b, v(a, b)) == a
+
+
 class Board:
     def __init__(self) -> None:
         self.height = 0
@@ -67,4 +87,38 @@ class Board:
         return list(self.antennas.keys())
 
     def __getitem__(self, freq: str) -> set[tuple[int, int]]:
-        return self.antennas.get(freq)
+        return self.antennas.get(freq, set())
+
+    def __contains__(self, pos: tuple[int, int]) -> bool:
+        x, y = pos
+        if not 0 <= x < self.width:
+            return False
+        return 0 <= y < self.height
+
+    def antinodes(self, freq: str) -> set[tuple[int, int]]:
+        antennas = self[freq]
+        result = set()
+        for a, b in itertools.permutations(antennas, 2):
+            if (pos := vadd(b, v(a, b))) not in self:
+                continue
+            result.add(pos)
+        return result
+
+    def all_antinodes(self) -> set[tuple[int, int]]:
+        result = set()
+        for freq in self.frequencies:
+            result.update(self.antinodes(freq))
+        return result
+
+
+def test_place_antinodes_for_single_freq(example_data: StringIO) -> None:
+    board = load(example_data)
+    antinodes = board.antinodes('0')
+    assert (6, 0) in antinodes
+    assert (3, 6) in antinodes
+
+
+def test_place_antinodes(example_data: StringIO) -> None:
+    board = load(example_data)
+    antinodes = board.all_antinodes()
+    assert len(antinodes) == 14
