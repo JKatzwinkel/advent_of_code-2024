@@ -27,6 +27,10 @@ def test_update_block_size() -> None:
 def test_mv_file() -> None:
     fs = FS.of('0..111').with_block_size_1()
     assert f'{fs.mv_file(5, 1)}' == '01.11.'
+    fs = FS.decode('13202')
+    assert str(fs) == '0...1122'
+    assert fs.segms == [('0', 1), ('.', 3), ('1', 2), ('2', 2)]
+    assert str(fs.mv_file(3, 1)) == '022.11..'
 
 
 @pytest.mark.parametrize(
@@ -78,7 +82,7 @@ class FS:
             if not gap_mode:
                 file_id += 1
             gap_mode = not gap_mode
-        return cls(segms)
+        return cls([segm for segm in segms if segm[1]])
 
     def with_block_size_1(self) -> Self:
         blocks = []
@@ -86,18 +90,21 @@ class FS:
             blocks += [(segm[0], 1)] * segm[1]
         return self.__class__(blocks)
 
-    def _find_first_gap_of_size(self, size: int) -> int:
+    def _find_first_gap_of_size(
+        self, size: int, before_index: int
+    ) -> int:
         for i, segm in enumerate(self.segms):
             if segm[0] != '.':
                 continue
             if segm[1] >= size:
                 return i
+            if i >= before_index:
+                break
         return -1
 
     def mv_file(self, right: int, left: int) -> Self:
         file = self.segms[right]
         gap = self.segms[left]
-        print(f'moving {file[0] * file[1]} from {right} to {left}')
         self.segms[left] = ('.', gap[1] - file[1])
         self.segms[right] = ('.', file[1])
         self.segms.insert(left, (file[0], file[1]))
@@ -111,9 +118,8 @@ class FS:
                 or not segm[1]
             ):
                 right -= 1
-            print(f'at segment {right}...')
             if (
-                left := self._find_first_gap_of_size(segm[1])
+                left := self._find_first_gap_of_size(segm[1], right)
             ) > -1 and left < right:
                 self.mv_file(right, left)
             else:
@@ -122,14 +128,14 @@ class FS:
 
     def checksum(self) -> int:
         result = 0
-        for i, char in enumerate(self.__str__()):
+        for i, char in enumerate(str(self)):
             if char == '.':
                 continue
             result += i * int(char)
         return result
 
 
-def test_example() -> None:
+def test_example_part1() -> None:
     dense = '2333133121414131402'
     fs = FS.decode(dense)
     assert f'{fs.with_block_size_1().compact()}' == (
@@ -138,9 +144,17 @@ def test_example() -> None:
     assert fs.with_block_size_1().compact().checksum() == 1928
 
 
+def test_example_part2() -> None:
+    dense = '2333133121414131402'
+    fs = FS.decode(dense)
+    assert fs.compact().checksum() == 2858
+
+
 if __name__ == '__main__':
     with open('input.txt') as f:
         dense = f.read().split('\n')[0]
     fs = FS.decode(dense)
     result_1 = fs.with_block_size_1().compact().checksum()
     print(f'checksum of fragmented fs: {result_1}')
+    result_2 = fs.compact().checksum()
+    print(f'checksum after non-fragmenting compaction: {result_2}')
