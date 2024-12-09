@@ -119,9 +119,7 @@ class FS:
             ):
                 right -= 1
             if (
-                left := self._find_first_gap_of_size(
-                    self.segms[right][1], right
-                )
+                left := self._find_first_gap_of_size(segm[1], right)
             ) > -1:
                 self.mv_file(right, left)
             else:
@@ -158,5 +156,5 @@ if __name__ == '__main__':
     fs = FS.decode(dense)
     result_1 = fs.with_block_size_1().compact().checksum()
     print(f'checksum of fragmented fs: {result_1}')
-    result_2 = fs.compact().checksum()
+    result_2 = FS.decode(dense).compact().checksum()
     print(f'checksum after non-fragmenting compaction: {result_2}')
