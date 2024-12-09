@@ -86,9 +86,10 @@ class FS:
 
     def to_list(self) -> list:
         list_repr = []
-        list_repr.extend(
-            [segm[0]] * segm[1] for segm in self.segms
-        )
+        for segm in self.segms:
+            list_repr.extend(
+                [segm[0]] * segm[1]
+            )
         return list_repr
 
     def with_block_size_1(self) -> Self:
