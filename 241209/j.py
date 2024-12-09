@@ -98,15 +98,15 @@ class FS:
         return self.__class__(blocks)
 
     def _find_first_gap_of_size(
-        self, size: int, before_index: int
+        self, size: int, start_index: int, end_index: int
     ) -> int:
-        for i, segm in enumerate(self.segms):
-            if i >= before_index:
+        for i, segm in enumerate(self.segms[start_index:]):
+            if i + start_index >= end_index:
                 break
             if segm[0] != '.':
                 continue
             if segm[1] >= size:
-                return i
+                return i + start_index
         return -1
 
     def mv_file(self, right: int, left: int) -> Self:
@@ -119,6 +119,7 @@ class FS:
 
     def compact(self) -> Self:
         right = len(self.segms) - 1
+        leftmost: dict[int, int] = {}
         while right > 0:
             while (
                 (segm := self.segms[right])[0] == '.' and segm[1]
@@ -126,9 +127,12 @@ class FS:
             ):
                 right -= 1
             if (
-                left := self._find_first_gap_of_size(segm[1], right)
+                left := self._find_first_gap_of_size(
+                    segm[1], leftmost.get(segm[1], 0), right
+                )
             ) > -1:
                 self.mv_file(right, left)
+                leftmost[segm[1]] = left
             else:
                 right -= 1
         return self
