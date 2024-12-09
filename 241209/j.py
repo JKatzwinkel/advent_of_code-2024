@@ -85,6 +85,12 @@ class FS:
             gap_mode = not gap_mode
         return cls([segm for segm in segms if segm[1]])
 
+    def to_list(self) -> list[str]:
+        return [
+            char for segm in self.segms
+            for char in [segm[0]] * segm[1]
+        ]
+
     def with_block_size_1(self) -> Self:
         blocks = []
         for segm in self.segms:
@@ -128,17 +134,10 @@ class FS:
         return self
 
     def checksum(self) -> int:
-        result = 0
-        i = 0
-        for segm in self.segms:
-            if segm[0] == '.':
-                i += segm[1]
-                continue
-            file_id = int(segm[0])
-            for i in range(i, i+segm[1]):
-                result += i * file_id
-            i += 1
-        return result
+        return sum(
+            i * int(char) for i, char in enumerate(self.to_list())
+            if char != '.'
+        )
 
 
 def test_example_part1() -> None:
