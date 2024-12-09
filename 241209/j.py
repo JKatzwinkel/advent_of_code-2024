@@ -19,8 +19,18 @@ def test_decode_dense_format(dense: str, blocks: str) -> None:
     assert f'{FS.decode(dense)}' == blocks
 
 
+def test_update_block_size() -> None:
+    fs = FS.decode('12345')
+    assert str(fs) == str(fs.with_block_size_1())
+
+
+def test_mv_file() -> None:
+    fs = FS.of('0..111').with_block_size_1()
+    assert f'{fs.mv_file(5, 1)}' == '01.11.'
+
+
 @pytest.mark.parametrize(
-    'blocks,defrag',
+    'blocks,frag',
     [
         ('11.2.33', '11323..'),
         ('0..111....22222', '022111222......'),
@@ -30,52 +40,89 @@ def test_decode_dense_format(dense: str, blocks: str) -> None:
         )
     ]
 )
-def test_defrag(blocks: str, defrag: str) -> None:
-    assert str(FS.of(blocks).defrag()) == defrag
+def test_fragmentation(blocks: str, frag: str) -> None:
+    assert str(
+        FS.of(blocks).with_block_size_1().compact()
+    ) == frag
+
+
+def test_compaction() -> None:
+    dense = '2333133121414131402'
+    assert str(FS.decode(dense).compact()) == (
+        '00992111777.44.333....5555.6666.....8888..'
+    )
 
 
 class FS:
-    def __init__(self, blocks: list[str]):
-        self.blocks = blocks
+    def __init__(self, segms: list[tuple[str, int]]):
+        self.segms = segms
 
     def __str__(self) -> str:
-        return ''.join(self.blocks)
+        return ''.join(
+            segm[0] * segm[1] for segm in self.segms
+        )
 
     @classmethod
     def of(cls, decoded: str) -> Self:
-        return cls([c for c in decoded])
+        return cls([(c, 1) for c in decoded])
 
     @classmethod
     def decode(cls, encoded: str) -> Self:
-        blocks: list[str] = []
+        segms: list[tuple[str, int]] = []
         file_id = 0
         gap_mode = False
         for char in encoded:
-            for _ in range(int(char)):
-                blocks.append(f'{file_id}' if not gap_mode else '.')
+            segms.append(
+                (f'{file_id}' if not gap_mode else '.', int(char))
+            )
             if not gap_mode:
                 file_id += 1
             gap_mode = not gap_mode
-        return cls(blocks)
+        return cls(segms)
 
-    def defrag(self) -> Self:
-        left = 0
-        right = len(self.blocks) - 1
-        while left < right:
-            while self.blocks[right] == '.':
+    def with_block_size_1(self) -> Self:
+        blocks = []
+        for segm in self.segms:
+            blocks += [(segm[0], 1)] * segm[1]
+        return self.__class__(blocks)
+
+    def _find_first_gap_of_size(self, size: int) -> int:
+        for i, segm in enumerate(self.segms):
+            if segm[0] != '.':
+                continue
+            if segm[1] >= size:
+                return i
+        return -1
+
+    def mv_file(self, right: int, left: int) -> Self:
+        file = self.segms[right]
+        gap = self.segms[left]
+        print(f'moving {file[0] * file[1]} from {right} to {left}')
+        self.segms[left] = ('.', gap[1] - file[1])
+        self.segms[right] = ('.', file[1])
+        self.segms.insert(left, (file[0], file[1]))
+        return self
+
+    def compact(self) -> Self:
+        right = len(self.segms) - 1
+        while right > 0:
+            while (
+                (segm := self.segms[right])[0] == '.' and segm[1]
+                or not segm[1]
+            ):
                 right -= 1
-            while self.blocks[left] != '.':
-                left += 1
-            if left > right:
-                break
-            self.blocks[left], self.blocks[right] = (
-                self.blocks[right], self.blocks[left]
-            )
+            print(f'at segment {right}...')
+            if (
+                left := self._find_first_gap_of_size(segm[1])
+            ) > -1 and left < right:
+                self.mv_file(right, left)
+            else:
+                right -= 1
         return self
 
     def checksum(self) -> int:
         result = 0
-        for i, char in enumerate(self.blocks):
+        for i, char in enumerate(self.__str__()):
             if char == '.':
                 continue
             result += i * int(char)
@@ -85,7 +132,15 @@ class FS:
 def test_example() -> None:
     dense = '2333133121414131402'
     fs = FS.decode(dense)
-    assert f'{fs.defrag()}' == (
+    assert f'{fs.with_block_size_1().compact()}' == (
         '0099811188827773336446555566..............'
     )
-    assert fs.defrag().checksum() == 1928
+    assert fs.with_block_size_1().compact().checksum() == 1928
+
+
+if __name__ == '__main__':
+    with open('input.txt') as f:
+        dense = f.read().split('\n')[0]
+    fs = FS.decode(dense)
+    result_1 = fs.with_block_size_1().compact().checksum()
+    print(f'checksum of fragmented fs: {result_1}')
