@@ -94,7 +94,10 @@ class FS:
     def with_block_size_1(self) -> Self:
         blocks = []
         for segm in self.segms:
-            blocks += [(segm[0], 1)] * segm[1]
+            if segm[0] != '.':
+                blocks += [(segm[0], 1)] * segm[1]
+            else:
+                blocks.append((segm[0], segm[1]))
         return self.__class__(blocks)
 
     def _find_first_gap_of_size(
@@ -159,9 +162,7 @@ def test_example_part2() -> None:
     assert fs.compact().checksum() == 2858
 
 
-@pytest.mark.skipif(
-    'GITHUB_RUN_ID' not in os.environ, reason='slow'
-)
+@pytest.mark.skipif('GITHUB_RUN_ID' not in os.environ, reason='slow')
 def test_answers() -> None:
     with open('input.txt') as f:
         dense = f.read().split('\n')[0]
