@@ -84,6 +84,11 @@ class FS:
             gap_mode = not gap_mode
         return cls([segm for segm in segms if segm[1]])
 
+    def to_list(self) -> list:
+        return [].extend(
+            [segm[0]] * segm[1] for segm in self.segms
+        )
+
     def with_block_size_1(self) -> Self:
         blocks = []
         for segm in self.segms:
@@ -128,7 +133,7 @@ class FS:
 
     def checksum(self) -> int:
         result = 0
-        for i, char in enumerate(str(self)):
+        for i, char in enumerate(self.to_list()):
             if char == '.':
                 continue
             result += i * int(char)
