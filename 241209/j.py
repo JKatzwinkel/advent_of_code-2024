@@ -94,12 +94,12 @@ class FS:
         self, size: int, before_index: int
     ) -> int:
         for i, segm in enumerate(self.segms):
+            if i >= before_index:
+                break
             if segm[0] != '.':
                 continue
             if segm[1] >= size:
                 return i
-            if i >= before_index:
-                break
         return -1
 
     def mv_file(self, right: int, left: int) -> Self:
@@ -119,8 +119,10 @@ class FS:
             ):
                 right -= 1
             if (
-                left := self._find_first_gap_of_size(segm[1], right)
-            ) > -1 and left < right:
+                left := self._find_first_gap_of_size(
+                    self.segms[right][1], right
+                )
+            ) > -1:
                 self.mv_file(right, left)
             else:
                 right -= 1
