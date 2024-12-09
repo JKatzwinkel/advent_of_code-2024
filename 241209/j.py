@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from typing import Self
 
 import pytest
@@ -128,10 +129,15 @@ class FS:
 
     def checksum(self) -> int:
         result = 0
-        for i, char in enumerate(str(self)):
-            if char == '.':
+        i = 0
+        for segm in self.segms:
+            if segm[0] == '.':
+                i += segm[1]
                 continue
-            result += i * int(char)
+            file_id = int(segm[0])
+            for i in range(i, i+segm[1]):
+                result += i * file_id
+            i += 1
         return result
 
 
@@ -148,6 +154,17 @@ def test_example_part2() -> None:
     dense = '2333133121414131402'
     fs = FS.decode(dense)
     assert fs.compact().checksum() == 2858
+
+
+@pytest.mark.skipif(
+    'GITHUB_RUN_ID' not in os.environ, reason='slow'
+)
+def test_answers() -> None:
+    with open('input.txt') as f:
+        dense = f.read().split('\n')[0]
+    assert FS.decode(dense).with_block_size_1().compact().checksum() == (
+        6337921897505
+    )
 
 
 if __name__ == '__main__':
