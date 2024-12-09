@@ -72,3 +72,20 @@ class FS:
                 self.blocks[right], self.blocks[left]
             )
         return self
+
+    def checksum(self) -> int:
+        result = 0
+        for i, char in enumerate(self.blocks):
+            if char == '.':
+                continue
+            result += i * int(char)
+        return result
+
+
+def test_example() -> None:
+    dense = '2333133121414131402'
+    fs = FS.decode(dense)
+    assert f'{fs.defrag()}' == (
+        '0099811188827773336446555566..............'
+    )
+    assert fs.defrag().checksum() == 1928
