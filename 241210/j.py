@@ -354,4 +354,6 @@ if __name__ == '__main__':
         topo = load(f)
     heads = topo.find_paths()
     score = sum(head.score for head in heads)
-    print(f'accumulative trailhead score: {score}')
+    print(f'cumulative trailhead score: {score}')
+    rating = sum(head.rating for head in heads)
+    print(f'cumulative trailhead rating: {rating}')
