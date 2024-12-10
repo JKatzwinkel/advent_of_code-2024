@@ -186,6 +186,7 @@ def test_trailhead_scores(src: str, start: Point, score: int) -> None:
     head = Trailhead(topo, start)
     assert head.search().score == score
 
+
 @pytest.mark.parametrize(
     'src, number',
     [
@@ -254,3 +255,11 @@ def test_trailhead_starts(example_topo: Topo) -> None:
 def test_trailhead_score_sum(example_topo: Topo) -> None:
     heads = example_topo.find_paths()
     assert sum(head.score for head in heads) == 36
+
+
+if __name__ == '__main__':
+    with open('input.txt') as f:
+        topo = load(f)
+    heads = topo.find_paths()
+    score = sum(head.score for head in heads)
+    print(f'accumulative trailhead score: {score}')
