@@ -83,15 +83,23 @@ class Trailhead:
     def __init__(self, topo: Topo, start: Point) -> None:
         self.topo = topo
         self.start = start
-        self.ends: set[Point] = set()
+        self.trails: list[list[Point]]
 
     def search(self) -> Self:
-        self.ends = pathfind(self)
+        self.trails = pathfind(self)
         return self
 
     @property
     def score(self) -> int:
         return len(self.ends)
+
+    @property
+    def rating(self) -> int:
+        return len(self.trails)
+
+    @property
+    def ends(self) -> set[Point]:
+        return set(trail[-1] for trail in self.trails)
 
 
 DIRS = [(0, -1), (1, 0), (0, 1), (-1, 0)]
@@ -103,26 +111,65 @@ def step_into(direction: int, pos: Point) -> Point:
     return x, z
 
 
-def pathfind(head: Trailhead) -> set[Point]:
-    result: set[Point] = set()
-    steppy: dict[Point, set[Point]] = defaultdict(set)
-    frontier: set[Point] = {head.start}
-    while frontier:
+class Pathfinder:
+    def __init__(self, head: Trailhead) -> None:
+        self.start = head.start
+        self.topo = head.topo
+        self.result: list[list[Point]] = []
+        self.steppy: dict[Point, set[Point]] = defaultdict(set)
+        self.frontier: set[Point] = {self.start}
+
+    def run(self) -> Self:
+        while self.frontier:
+            self.loop()
+        return self
+
+    def loop(self) -> None:
         new_frontier: set[Point] = set()
-        for pos in frontier:
-            if (elevation := head.topo[pos]) == 9:
-                result.add(pos)
+        for pos in self.frontier:
+            if (elevation := self.topo[pos]) == 9:
+                self.result.extend(self.backtrack(pos))
                 continue
             for direction in range(4):
                 x, z = step_into(direction, pos)
-                if (x, z) not in head.topo:
+                if (x, z) not in self.topo:
                     continue
-                if head.topo[x, z] != elevation + 1:
+                if self.topo[x, z] != elevation + 1:
                     continue
-                steppy[x, z].add(pos)
+                self.steppy[x, z].add(pos)
                 new_frontier.add((x, z))
-        frontier = new_frontier.difference(frontier)
-    return result
+        self.frontier = new_frontier.difference(
+            self.frontier
+        )
+
+    def backtrack(self, pos: Point) -> list[list[Point]]:
+        if not (tiles_we_came_from := self.steppy[pos]):
+            return [[pos]]
+        results = []
+        for came_from in tiles_we_came_from:
+            for path in self.backtrack(came_from):
+                results.append(path + [pos])
+        return results
+
+
+def test_backtrack() -> None:
+    topo = load(StringIO('0123456789'))
+    head = Trailhead(topo, (0, 0))
+    dijk = Pathfinder(head)
+    for _ in range(9):
+        dijk.loop()
+    assert dijk.steppy[9, 0] == {(8, 0)}
+    assert dijk.steppy[8, 0] == {(7, 0)}
+    paths = dijk.backtrack((9, 0))
+    assert paths[0] == [
+        (0, 0), (1, 0), (2, 0), (3, 0), (4, 0),
+        (5, 0), (6, 0), (7, 0), (8, 0), (9, 0)
+    ]
+
+
+def pathfind(head: Trailhead) -> list[list[Point]]:
+    pathfinder = Pathfinder(head)
+    return pathfinder.run().result
 
 
 def test_trailhead() -> None:
@@ -255,6 +302,22 @@ def test_trailhead_starts(example_topo: Topo) -> None:
 def test_trailhead_score_sum(example_topo: Topo) -> None:
     heads = example_topo.find_paths()
     assert sum(head.score for head in heads) == 36
+
+
+def test_trailhead_rating() -> None:
+    topo = load(
+        StringIO(
+            '''.....0.
+            ..4321.
+            ..5..2.
+            ..6543.
+            ..7..4.
+            ..8765.
+            ..9....'''
+        )
+    )
+    head = Trailhead(topo, (5, 0)).search()
+    assert head.rating == 3
 
 
 if __name__ == '__main__':
