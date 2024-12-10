@@ -73,6 +73,11 @@ class Topo:
             )
         return result
 
+    def find_paths(self) -> list[Trailhead]:
+        return [
+            head.search() for head in self.find_heads()
+        ]
+
 
 class Trailhead:
     def __init__(self, topo: Topo, start: Point) -> None:
@@ -220,8 +225,9 @@ def test_find_trailheads(src: str, number: int) -> None:
     assert len(heads) == number
 
 
-def test_trailhead_starts() -> None:
-    topo = load(
+@pytest.fixture
+def example_topo() -> Topo:
+    return load(
         StringIO(
             '''89010123
             78121874
@@ -233,10 +239,18 @@ def test_trailhead_starts() -> None:
             10456732'''
         )
     )
-    heads = topo.find_heads()
+
+
+def test_trailhead_starts(example_topo: Topo) -> None:
+    heads = example_topo.find_heads()
     assert len(heads) == 9
     starts = [head.start for head in heads]
     assert starts == [
         (2, 0), (4, 0), (4, 2), (6, 4), (2, 5), (5, 5),
         (0, 6), (6, 6), (1, 7)
     ]
+
+
+def test_trailhead_score_sum(example_topo: Topo) -> None:
+    heads = example_topo.find_paths()
+    assert sum(head.score for head in heads) == 36
