@@ -304,20 +304,49 @@ def test_trailhead_score_sum(example_topo: Topo) -> None:
     assert sum(head.score for head in heads) == 36
 
 
-def test_trailhead_rating() -> None:
-    topo = load(
-        StringIO(
+@pytest.mark.parametrize(
+    'src, rating',
+    [
+        (
             '''.....0.
             ..4321.
             ..5..2.
             ..6543.
             ..7..4.
             ..8765.
-            ..9....'''
-        )
-    )
-    head = Trailhead(topo, (5, 0)).search()
-    assert head.rating == 3
+            ..9....''', 3
+        ),
+        (
+            '''..90..9
+            ...1.98
+            ...2..7
+            6543456
+            765.987
+            876....
+            987....''', 13
+        ),
+        (
+            '''012345
+            123456
+            234567
+            345678
+            4.6789
+            56789.''', 227
+        ),
+    ]
+)
+def test_trailhead_rating(src: str, rating: int) -> None:
+    topo = load(StringIO(src))
+    heads = topo.find_paths()
+    assert len(heads) == 1
+    assert heads[0].rating == rating
+
+
+def test_all_trailheads_rating(example_topo: Topo) -> None:
+    heads = example_topo.find_paths()
+    assert [head.rating for head in heads] == [
+        20, 24, 10, 4, 1, 4, 5, 8, 5
+    ]
 
 
 if __name__ == '__main__':
