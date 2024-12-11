@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from math import floor, log10, modf
+from math import floor, log10
 
 import pytest
 
@@ -34,11 +34,8 @@ def change(stone: int) -> list[int]:
     if stone == 0:
         return [1]
     if not (dig := digits(stone)) % 2:
-        split = modf(stone * 10 ** (-dig // 2))
-        return [
-            floor(split[1]),
-            floor(split[0] * 10 ** (dig // 2))
-        ]
+        ss = str(stone)
+        return [int(ss[:dig//2]), int(ss[dig//2:])]
     return [stone * 2024]
 
 
@@ -46,12 +43,15 @@ def test_change_rules() -> None:
     assert change(99) == [9, 9]
 
 
-def blink(stones: list[int]) -> list[int]:
-    return [
+def blink(stones: list[int], times: int = 1) -> list[int]:
+    result = [
         new_stone
         for stone in stones
         for new_stone in change(stone)
     ]
+    if times == 1:
+        return result
+    return blink(result, times - 1)
 
 
 @pytest.mark.parametrize(
@@ -83,3 +83,20 @@ def test_blink(stones: str, results: list[str]) -> None:
             f'{iteration}'
         )
         stones = iteration
+
+
+def test_blink_n_times() -> None:
+    assert len(blink(read('125 17'), 6)) == 22
+    assert len(blink(read('125 17'), 25)) == 55312
+
+
+def test_input() -> None:
+    stones = read('4022724 951333 0 21633 5857 97 702 6')
+    assert len(blink(stones, 25)) == 211306
+
+
+if __name__ == '__main__':
+    stones = read('4022724 951333 0 21633 5857 97 702 6')
+    for _ in range(25):
+        stones = blink(stones)
+    print(len(stones))
