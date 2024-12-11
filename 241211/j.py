@@ -52,7 +52,6 @@ class Node:
     def __init__(self, stone: int) -> None:
         self.value = stone
         self.children: list[Node] = []
-        self.populated = False
 
     def add(self, child: Node) -> Self:
         self.children.append(child)
@@ -66,6 +65,10 @@ class Node:
             for child in self.children
             for node in child.traverse(length - 1)
         ]
+
+    @property
+    def populated(self) -> bool:
+        return len(self.children) > 0
 
 
 class Graph:
@@ -85,16 +88,20 @@ class Graph:
         self[stone].add(self[changes_into])
         return self
 
+    def populate(self, stone: int) -> Node:
+        for successor in change(stone):
+            print(f'linking {stone} -> {successor}')
+            self.link(stone, successor)
+            if not self[successor].populated:
+                self.populate(successor)
+        return self[stone]
+
     def traverse(self, start: int, length: int) -> list[int]:
+        if not self[start].populated:
+            self.populate(start)
         return [
             node.value for node in self[start].traverse(length)
         ]
-
-    def keys(self) -> set[int]:
-        return set(self.nodes.keys())
-
-    def __contains__(self, stone: int) -> bool:
-        return stone in self.nodes
 
     @classmethod
     def spawn(cls) -> Graph:
@@ -108,7 +115,6 @@ class Graph:
                     if g[successor].populated:
                         continue
                     new_frontier.add(successor)
-                g[stone].populated = True
             frontier = new_frontier
         return g
 
@@ -124,9 +130,24 @@ def test_graph(smol_graph: Graph) -> None:
     assert smol_graph[20].value == 20
 
 
+def test_populate_node() -> None:
+    g = Graph()
+    g.populate(1000)
+    assert g[1000].children == [g[10], g[0]]
+
+
 def test_traverse_graph(smol_graph: Graph) -> None:
     assert smol_graph.traverse(1, 2) == [20, 24]
     assert smol_graph.traverse(1, 3) == [2, 0, 2, 4]
+    assert smol_graph.traverse(1000, 1) == [10, 0]
+    assert smol_graph.traverse(1000, 2) == [1, 0, 1]
+
+
+def test_graph_blinking() -> None:
+    g = Graph.spawn()
+    assert sstr(g.traverse(125, 5) + g.traverse(17, 5)) == (
+        '1036288 7 2 20 24 4048 1 4048 8096 28 67 60 32'
+    )
 
 
 def test_spawn_graph() -> None:
@@ -137,15 +158,16 @@ def test_spawn_graph() -> None:
     ]
 
 
+g = Graph.spawn()
+
+
 def blink(stones: list[int], times: int = 1) -> list[int]:
     result = [
-        new_stone
+        result
         for stone in stones
-        for new_stone in change(stone)
+        for result in g.traverse(stone, times)
     ]
-    if times == 1:
-        return result
-    return blink(result, times - 1)
+    return result
 
 
 @pytest.mark.parametrize(
