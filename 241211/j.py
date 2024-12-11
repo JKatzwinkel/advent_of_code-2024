@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import defaultdict
 from math import floor, log10
 from typing import Self
 
@@ -49,6 +50,10 @@ def test_change_rules() -> None:
 
 
 class Node:
+    lengths_after: dict[int, dict[int, int]] = defaultdict(
+        lambda: defaultdict(int)
+    )
+
     def __init__(self, stone: int) -> None:
         self.value = stone
         self.children: list[Node] = []
@@ -60,11 +65,27 @@ class Node:
     def traverse(self, length: int) -> list[Node]:
         if length == 0:
             return [self]
-        return [
+        assert self.children
+        result = [
             node
             for child in self.children
             for node in child.traverse(length - 1)
         ]
+        self.__class__.lengths_after[self.value][length] = len(result)
+        return result
+
+    def length_after(self, /, *, blinks: int) -> int:
+        if result := self.__class__.lengths_after[self.value][blinks]:
+            return result
+        if blinks == 1:
+            result = len(self.traverse(1))
+        else:
+            result = sum(
+                child.length_after(blinks=blinks-1)
+                for child in self.children
+            )
+        self.__class__.lengths_after[self.value][blinks] = result
+        return result
 
     @property
     def populated(self) -> bool:
@@ -90,7 +111,6 @@ class Graph:
 
     def populate(self, stone: int) -> Node:
         for successor in change(stone):
-            print(f'linking {stone} -> {successor}')
             self.link(stone, successor)
             if not self[successor].populated:
                 self.populate(successor)
@@ -99,9 +119,15 @@ class Graph:
     def traverse(self, start: int, length: int) -> list[int]:
         if not self[start].populated:
             self.populate(start)
-        return [
+        result = [
             node.value for node in self[start].traverse(length)
         ]
+        return result
+
+    def length_after(
+        self, start: int, /, *, blinks: int
+    ) -> int:
+        return self[start].length_after(blinks=blinks)
 
     @classmethod
     def spawn(cls) -> Graph:
@@ -162,12 +188,19 @@ g = Graph.spawn()
 
 
 def blink(stones: list[int], times: int = 1) -> list[int]:
-    result = [
-        result
-        for stone in stones
-        for result in g.traverse(stone, times)
-    ]
+    result = []
+    for i, stone in enumerate(stones):
+        result += g.traverse(stone, times)
     return result
+
+
+def length_after(
+    stones: list[int], /, *, blinks: int
+) -> int:
+    return sum(
+        g.length_after(stone, blinks=blinks)
+        for stone in stones
+    )
 
 
 @pytest.mark.parametrize(
@@ -203,7 +236,7 @@ def test_blink(stones: str, results: list[str]) -> None:
 
 def test_blink_n_times() -> None:
     assert len(blink(read('125 17'), 6)) == 22
-    assert len(blink(read('125 17'), 25)) == 55312
+    assert length_after([125, 17], blinks=25) == 55312
 
 
 def test_input() -> None:
@@ -211,7 +244,19 @@ def test_input() -> None:
     assert len(blink(stones, 25)) == 211306
 
 
+def test_length_after_blinks() -> None:
+    stones = [125, 17]
+    assert length_after(stones, blinks=6) == 22
+
+
+def test_input_length() -> None:
+    stones = read('4022724 951333 0 21633 5857 97 702 6')
+    assert length_after(stones, blinks=25) == 211306
+    assert length_after(stones, blinks=75) > 250783679881178
+    assert length_after(stones, blinks=75) > 250783679883676
+
+
 if __name__ == '__main__':
     stones = read('4022724 951333 0 21633 5857 97 702 6')
     print(len(blink(stones, 25)))
-    # print(len(blink(stones, 75)))
+    print(length_after(stones, blinks=75))
