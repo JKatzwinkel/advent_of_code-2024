@@ -1,17 +1,12 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from math import floor, log10
 from typing import Self
 
 import pytest
 
 
 def read(line: str) -> list[int]:
-    '''
-    >>> read('0 1 10 99 999 ')
-    [0, 1, 10, 99, 999]
-    '''
     return list(map(int, line.strip().split()))
 
 
@@ -19,25 +14,12 @@ def sstr(stones: list[int]) -> str:
     return ' '.join(map(str, stones))
 
 
-def digits(number: int) -> int:
-    '''
-    >>> digits(0)
-    1
-
-    >>> digits(10)
-    2
-    '''
-    if number < 1:
-        return 1
-    return floor(log10(number)) + 1
-
-
 def change(stone: int) -> list[int]:
     if stone == 0:
         return [1]
-    if not (dig := digits(stone)) % 2:
-        ss = str(stone)
-        return [int(ss[:dig//2]), int(ss[dig//2:])]
+    if not len(ss := str(stone)) % 2:
+        dig = len(ss) // 2
+        return [int(ss[:dig]), int(ss[dig:])]
     return [stone * 2024]
 
 
@@ -45,8 +27,6 @@ def test_change_rules() -> None:
     assert change(99) == [9, 9]
     assert change(2024) == [20, 24]
     assert change(1) == [2024]
-    # assert change(0, 2) == [2024]
-    # assert change(0, 3) == [20, 24]
 
 
 class Node:
@@ -127,6 +107,8 @@ class Graph:
     def length_after(
         self, start: int, /, *, blinks: int
     ) -> int:
+        if not self[start].populated:
+            self.populate(start)
         return self[start].length_after(blinks=blinks)
 
     @classmethod
@@ -184,19 +166,19 @@ def test_spawn_graph() -> None:
     ]
 
 
-g = Graph.spawn()
-
-
 def blink(stones: list[int], times: int = 1) -> list[int]:
-    result = []
-    for i, stone in enumerate(stones):
-        result += g.traverse(stone, times)
-    return result
+    g = Graph.spawn()
+    return [
+        result
+        for stone in stones
+        for result in g.traverse(stone, times)
+    ]
 
 
 def length_after(
     stones: list[int], /, *, blinks: int
 ) -> int:
+    g = Graph.spawn()
     return sum(
         g.length_after(stone, blinks=blinks)
         for stone in stones
@@ -252,8 +234,7 @@ def test_length_after_blinks() -> None:
 def test_input_length() -> None:
     stones = read('4022724 951333 0 21633 5857 97 702 6')
     assert length_after(stones, blinks=25) == 211306
-    assert length_after(stones, blinks=75) > 250783679881178
-    assert length_after(stones, blinks=75) > 250783679883676
+    assert length_after(stones, blinks=75) == 250783680217283
 
 
 if __name__ == '__main__':
