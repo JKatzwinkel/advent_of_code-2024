@@ -1,0 +1,28 @@
+---
+
+name: day 11
+
+on: [push]
+
+jobs:
+
+  day_11:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - run: python -mvenv .venv && . ./.venv/bin/activate
+
+      - run: pip install pytest-cov
+
+      - run: >-
+          pytest --cov --cov-report term-missing
+          --doctest-modules j.py
+        working-directory: 241211
+
+...
