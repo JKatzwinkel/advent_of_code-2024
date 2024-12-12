@@ -1,12 +1,12 @@
 ---
 
-name: day 11
+name: test
 
 on: [push]
 
 jobs:
 
-  day_11:
+  test:
     runs-on: ubuntu-latest
 
     steps:
@@ -20,9 +20,24 @@ jobs:
 
       - run: pip install pytest-cov
 
-      - run: >-
+      - name: day 7
+        run: pytest j.py
+        working-directory: 241207
+
+      - name: day 10
+        run: pytest --cov --cov-report term-missing j.py
+        working-directory: 241210
+
+      - name: day 11
+        run: >-
           pytest --cov --cov-report term-missing
           --doctest-modules j.py
         working-directory: 241211
+
+      - name: day 12
+        run: >-
+          pytest --cov --cov-report term-missing
+          --doctest-modules j.py
+        working-directory: 241212
 
 ...
