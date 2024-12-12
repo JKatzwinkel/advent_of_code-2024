@@ -30,6 +30,23 @@ def medion_example() -> StringIO:
     )
 
 
+@pytest.fixture
+def large_example() -> StringIO:
+    return StringIO(
+        '''
+        RRRRIICCFF
+        RRRRIICCCF
+        VVRRRCCFFF
+        VVRCCCJFFF
+        VVVVCJJCFE
+        VVIVCCJJEE
+        VVIIICJJEE
+        MIIIIIJJEE
+        MIIISIJEEE
+        MMMISSJEEE'''
+    )
+
+
 def load(src: TextIOBase) -> list[Region]:
     regions: dict[Point, Region] = defaultdict(Region)
     z = 0
@@ -63,6 +80,11 @@ def test_load_medion(medion_example: StringIO) -> None:
     assert regions[0].plant == 'O'
 
 
+def test_load_large(large_example: StringIO) -> None:
+    regions = load(large_example)
+    assert len(regions) == 11
+
+
 type Point = tuple[int, int]
 DIRS = [(0, -1), (1, 0), (0, 1), (-1, 0)]
 
@@ -75,8 +97,9 @@ def step_into(v: Point, pos: Point) -> Point:
 class Region:
     '''
     >>> r = Region()
+    >>> r.plant = 'A'
     >>> r.add((1, 1))
-    <Region{(1, 1)}>
+    <Region[A]{(1, 1)}>
     >>> r.area
     1
     >>> r.perimeter
@@ -106,14 +129,20 @@ class Region:
         return result
 
     def __repr__(self) -> str:
-        return f'<{self.__class__.__name__}{self.plots}>'
+        return f'<{self.__class__.__name__}[{self.plant}]{self.plots}>'
 
     def __lt__(self, other: Self) -> bool:
+        if self.plant == other.plant:
+            return self.area < other.area
         return self.plant < other.plant
 
     def add(self, plot: Point) -> Self:
         self.plots.add(plot)
         return self
+
+    @property
+    def price(self) -> int:
+        return self.area * self.perimeter
 
 
 def test_perimeter(medion_example: StringIO) -> None:
@@ -121,3 +150,24 @@ def test_perimeter(medion_example: StringIO) -> None:
     assert regions[0].plant == 'O'
     assert regions[0].perimeter == 36
     assert regions[1].perimeter == 4
+
+
+def test_price_01(smol_example: StringIO) -> None:
+    regions = load(smol_example)
+    assert regions[0].plant == 'A'
+    assert [region.price for region in regions] == [40, 32, 40, 4, 24]
+
+
+def test_price_02(medion_example: StringIO) -> None:
+    regions = load(medion_example)
+    assert regions[0].plant == 'O'
+    assert [region.price for region in regions] == [756, 4, 4, 4, 4]
+
+
+def test_price_03(large_example: StringIO) -> None:
+    regions = load(large_example)
+    assert regions[0].plant == 'C'
+    assert regions[0].price == 4
+    assert regions[1].plant == 'C'
+    assert regions[1].price == 392
+    assert sum(region.price for region in regions) == 1930
