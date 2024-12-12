@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from io import StringIO, TextIOBase
+from typing import Self
 
 import pytest
 
@@ -33,13 +34,14 @@ def load(src: TextIOBase) -> list[Region]:
             regions[x, z].plots.add((x, z))
         z += 1
         prev = plots
-    return list(set(regions.values()))
+    return sorted(list(set(regions.values())))
 
 
 def test_load(smol_example: StringIO) -> None:
     regions = load(smol_example)
     assert len(regions) == 5
     assert regions[0].area == 4
+    assert regions[0].plant == 'A'
 
 
 type Point = tuple[int, int]
@@ -57,3 +59,14 @@ class Region:
 
     def __repr__(self) -> str:
         return f'<{self.__class__}{self.plots}>'
+
+    def __cmp__(self, other: Self) -> int:
+        if self == other:
+            return 0
+        return 1 if self > other else -1
+
+    def __lt__(self, other: Self) -> bool:
+        return self.plant < other.plant
+
+    def __gt__(self, other: Self) -> bool:
+        return self.plant > other.plant
