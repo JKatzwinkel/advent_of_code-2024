@@ -17,6 +17,19 @@ def smol_example() -> StringIO:
     )
 
 
+@pytest.fixture
+def medion_example() -> StringIO:
+    return StringIO(
+        '''
+        OOOOO
+        OXOXO
+        OOOOO
+        OXOXO
+        OOOOO
+        '''
+    )
+
+
 def load(src: TextIOBase) -> list[Region]:
     regions: dict[Point, Region] = defaultdict(Region)
     z = 0
@@ -44,29 +57,67 @@ def test_load(smol_example: StringIO) -> None:
     assert regions[0].plant == 'A'
 
 
+def test_load_medion(medion_example: StringIO) -> None:
+    regions = load(medion_example)
+    assert len(regions) == 5
+    assert regions[0].plant == 'O'
+
+
 type Point = tuple[int, int]
+DIRS = [(0, -1), (1, 0), (0, 1), (-1, 0)]
+
+
+def step_into(v: Point, pos: Point) -> Point:
+    x, z = map(sum, zip(pos, v))
+    return x, z
 
 
 class Region:
+    '''
+    >>> r = Region()
+    >>> r.add((1, 1))
+    <Region{(1, 1)}>
+    >>> r.area
+    1
+    >>> r.perimeter
+    4
+    >>> r.add((2, 1)).perimeter
+    6
+    '''
     def __init__(self) -> None:
         self.plots: set[Point] = set()
-        self.perimeter = 0
         self.plant = ''
 
     @property
     def area(self) -> int:
         return len(self.plots)
 
-    def __repr__(self) -> str:
-        return f'<{self.__class__}{self.plots}>'
+    @property
+    def perimeter(self) -> int:
+        result = 0
+        for plot in self.plots:
+            result += 4 - sum(
+                1
+                for adjacent in (
+                    step_into(direction, plot) for direction in DIRS
+                )
+                if adjacent in self.plots
+            )
+        return result
 
-    def __cmp__(self, other: Self) -> int:
-        if self == other:
-            return 0
-        return 1 if self > other else -1
+    def __repr__(self) -> str:
+        return f'<{self.__class__.__name__}{self.plots}>'
 
     def __lt__(self, other: Self) -> bool:
         return self.plant < other.plant
 
-    def __gt__(self, other: Self) -> bool:
-        return self.plant > other.plant
+    def add(self, plot: Point) -> Self:
+        self.plots.add(plot)
+        return self
+
+
+def test_perimeter(medion_example: StringIO) -> None:
+    regions = load(medion_example)
+    assert regions[0].plant == 'O'
+    assert regions[0].perimeter == 36
+    assert regions[1].perimeter == 4
