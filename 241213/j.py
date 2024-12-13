@@ -12,7 +12,9 @@ BUTTON_EX = re.compile(r'Button .: X\+(\d+), Y\+(\d+)')
 PRIZE_EX = re.compile(r'Prize: X=(\d+), Y=(\d+)')
 
 
-def load(src: TextIOBase) -> list[Machine]:
+def load(
+    src: TextIOBase, twist: bool = False
+) -> list[Machine]:
     results = []
     machine = Machine()
     for line in src:
@@ -22,6 +24,11 @@ def load(src: TextIOBase) -> list[Machine]:
         elif (p := PRIZE_EX.findall(line)):
             x, y = p[0]
             machine.prize = V(int(x), int(y))
+            if twist:
+                machine.prize += V(
+                    10000000000000,
+                    10000000000000
+                )
         else:
             results.append(machine)
             machine = Machine()
@@ -162,3 +169,9 @@ def test_input() -> None:
         machines = load(f)
     assert len(machines) == 320
     assert cost(machines) == 34393
+
+
+def test_input_part2() -> None:
+    with open('input.txt') as f:
+        machines = load(f, twist=True)
+    assert cost(machines) == 83551068361379
