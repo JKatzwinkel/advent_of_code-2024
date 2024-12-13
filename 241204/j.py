@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from io import StringIO, TextIOBase
 import itertools
-from typing import Iterable, Iterator
+from typing import Iterable, Iterator, Self
 
 import pytest
 
@@ -70,10 +70,38 @@ class D(B):
 
     >>> D(1, 1).go_from(P(3, 4))
     <P(4, 5)>
+
+    >>> D(1, 1) * D(-1, 1)
+    0
     '''
 
     def go_from(self, pos: P, distance: int = 1) -> P:
         return pos.move(self, distance)
+
+    def is_diagonal(self) -> bool:
+        return self.x != 0 and self.y != 0
+
+    @classmethod
+    def contain_x(self, *vectors: Self) -> bool:
+        '''
+        >>> D.contain_x(D(-1, 1), D(0, 1), D(1, -1))
+        False
+
+        >>> D.contain_x(D(-1, -1), D(0, 1), D(1, -1))
+        True
+
+        >>> D.contain_x()
+        False
+        '''
+        return any(
+            v1 * v2 == 0
+            for v1, v2 in itertools.combinations(
+                vectors, 2
+            )
+        )
+
+    def __mul__(self, v: Self) -> int:
+        return self.x * v.x + self.y * v.y
 
     def __repr__(self) -> str:
         if self not in DIRS:
@@ -116,12 +144,14 @@ class Puzzle:
         self.letters += row
         self.width = len(row)
 
-    def search(self, word: str) -> dict[P, list[D]]:
+    def search(
+        self, word: str, offset: int = 0
+    ) -> dict[P, list[D]]:
         frontier = {
             P(x, y): DIRS.copy()
             for x in range(self.width)
             for y in range(self.height)
-            if self[x, y] == word[0]
+            if self[x, y] == word[offset]
         }
         for dist, letter in enumerate(word):
             new_frontier = {}
@@ -130,7 +160,9 @@ class Puzzle:
                     direction
                     for direction in directions
                     if self[
-                        pos.move(direction, dist)
+                        pos.move(
+                            direction, dist - offset
+                        )
                     ] == letter
                 ]
             frontier = new_frontier
@@ -143,6 +175,25 @@ class Puzzle:
     def count(self, word: str) -> int:
         frontier = self.search(word)
         return sum(map(len, frontier.values()))
+
+    def find_x(self, word: str) -> dict[P, list[D]]:
+        result = self.search(word, len(word) // 2)
+        return {
+            pos: directions
+            for pos, directions in result.items()
+            if D.contain_x(
+                *(
+                    d for d in directions
+                    if d.is_diagonal()
+                )
+            )
+        }
+
+    def count_x(self, word: str) -> int:
+        return sum(
+            1
+            for directions in self.find_x(word).values()
+        )
 
 
 def test_load(example_1: str) -> None:
@@ -186,7 +237,53 @@ def test_find_word(example_1: str) -> None:
     assert grid.count('XMAS') == 18
 
 
+def test_find_word_x() -> None:
+    grid = load(StringIO(
+        '''M.S
+           .A.
+           M.S'''
+    ))
+    result = grid.find_x('MAS')
+    assert P(1, 1) in result
+    assert str(result[P(1, 1)]) == '[↗, ↘]'
+    assert grid.count_x('MAS') == 1
+
+
+@pytest.fixture
+def example_clean() -> str:
+    return '''
+        .M.S......
+        ..A..MSMS.
+        .M.S.MAA..
+        ..A.ASMSM.
+        .M.S.M....
+        ..........
+        S.S.S.S.S.
+        .A.A.A.A..
+        M.M.M.M.M.
+        ..........'''
+
+
+def test_find_word_centers(example_clean: str) -> None:
+    grid = load(StringIO(example_clean))
+    result = grid.search('MAS', 1)
+    assert len(result) == 9
+    assert str(result[P(7, 2)]) == '[↖, ↓, ↗]'
+
+
+def test_count_word_x(example_clean: str) -> None:
+    grid = load(StringIO(example_clean))
+    assert grid.count_x('MAS') == 9, (
+        f'{grid}\n\n' + '\n'.join(
+            f'{pos}: {directions}'
+            for pos, directions
+            in grid.find_x('MAS').items()
+        )
+    )
+
+
 def test_input() -> None:
     with open('input.txt') as f:
         grid = load(f)
     assert grid.count('XMAS') == 2685
+    assert grid.count_x('MAS') == 2048
