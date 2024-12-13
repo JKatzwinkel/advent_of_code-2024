@@ -1,3 +1,4 @@
+from collections import Counter
 from io import StringIO, TextIOBase
 
 import pytest
@@ -13,11 +14,25 @@ def load(src: TextIOBase) -> list[tuple[int, int]]:
     return results
 
 
-def distances(lists: list[tuple[int, int]]) -> list[int]:
+def rotate(lists: list[tuple[int, int]]) -> tuple[list[int], list[int]]:
     l1, l2 = [
         sorted(pair[i] for pair in lists) for i in [0, 1]
     ]
+    return l1, l2
+
+
+def distances(l1: list[int], l2: list[int]) -> list[int]:
     return [abs(pair[0] - pair[1]) for pair in zip(l1, l2)]
+
+
+def similarity(l1: list[int], l2: list[int]) -> int:
+    value_counts: Counter[int] = Counter()
+    for n in l2:
+        value_counts[n] += 1
+    result = 0
+    for n in l1:
+        result += n * value_counts[n]
+    return result
 
 
 @pytest.fixture
@@ -38,11 +53,17 @@ def test_load(example: TextIOBase) -> None:
 
 
 def test_distances(example: TextIOBase) -> None:
-    dist = distances(load(example))
+    dist = distances(*rotate(load(example)))
     assert sum(dist) == 11
+
+
+def test_similarity(example: TextIOBase) -> None:
+    l1, l2 = rotate(load(example))
+    assert similarity(l1, l2) == 31
 
 
 def test_input() -> None:
     with open('input.txt') as f:
-        locations = load(f)
-    assert sum(distances(locations)) == 1938424
+        locations = rotate(load(f))
+    assert sum(distances(*locations)) == 1938424
+    assert similarity(*locations) == 22014209
