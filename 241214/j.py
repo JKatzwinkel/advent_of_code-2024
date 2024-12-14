@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+from collections import Counter
 from io import StringIO, TextIOBase
 import re
+from textwrap import dedent
 from typing import Iterable, Iterator, Self
 
 import pytest
@@ -34,6 +36,54 @@ class Grid:
     def __init__(self, width: int, height: int) -> None:
         self.width = width
         self.height = height
+        self.robots: list[Robot] = []
+
+    def with_robots(self, robots: list[Robot]) -> Self:
+        self.robots.extend(robots)
+        return self
+
+    def __str__(self) -> str:
+        robots_at = Counter(
+            robot.pos for robot in self.robots
+        )
+        lines = []
+        for z in range(self.height):
+            lines.append(
+                ''.join(
+                    str(robots_at[V(x, z)])
+                    if V(x, z) in robots_at else '.'
+                    for x in range(self.width)
+                )
+            )
+        return '\n'.join(lines)
+
+    def tick(self, times: int = 1) -> Self:
+        for robot in self.robots:
+            robot.pos = robot.pos + robot.v * times
+            robot.pos = robot.pos % V(
+                self.width, self.height
+            )
+        return self
+
+    def quadrants(self) -> list[int]:
+        counts: dict[int, int] = Counter()
+        for robot in self.robots:
+            x, z = robot.pos
+            if (
+                x == self.width // 2
+                or z == self.height // 2
+            ):
+                continue
+            quadrant = (
+                int(x / (self.width / 2)) +
+                int(z / (self.height / 2)) * 2
+            )
+            counts[quadrant] += 1
+        return [
+            count for quadrant, count in sorted(
+                counts.items(), key=lambda t: t[0]
+            )
+        ]
 
 
 class V(Iterable[int]):
@@ -63,8 +113,16 @@ class V(Iterable[int]):
     def __rmul__(self, factor: int) -> Self:
         return self.__mul__(factor)
 
+    def __mod__(self, div: Self) -> Self:
+        return self.__class__(
+            self.x % div.x, self.y % div.y
+        )
+
     def __repr__(self) -> str:
         return f'↗({self.x}, {self.y})'
+
+    def __hash__(self) -> int:
+        return self.y * 10 ** 10 + self.x
 
 
 @pytest.fixture
@@ -91,3 +149,61 @@ def test_load(example: TextIOBase) -> None:
     assert len(robots) == 12
     assert robots[0].pos == V(0, 4)
     assert robots[0].v == V(3, -3)
+
+
+def test_grid(example: TextIOBase) -> None:
+    grid = Grid(11, 7).with_robots(load(example))
+    assert f'{grid}' == dedent(
+        '''\
+        1.12.......
+        ...........
+        ...........
+        ......11.11
+        1.1........
+        .........1.
+        .......1...'''
+    )
+
+
+def test_tick() -> None:
+    grid = Grid(11, 7).with_robots(
+        [Robot(V(2, 4), V(2, -3))]
+    )
+    assert str(grid) == dedent(
+        '''\
+        ...........
+        ...........
+        ...........
+        ...........
+        ..1........
+        ...........
+        ...........'''
+    )
+    assert str(grid.tick(5)) == dedent(
+        '''\
+        ...........
+        ...........
+        ...........
+        .1.........
+        ...........
+        ...........
+        ...........'''
+    )
+
+
+def test_count_robots(example: TextIOBase) -> None:
+    grid = Grid(11, 7).with_robots(
+        load(example)
+    ).tick(100)
+    assert str(grid) == dedent(
+        '''\
+        ......2..1.
+        ...........
+        1..........
+        .11........
+        .....1.....
+        ...12......
+        .1....1....'''
+    )
+    count = grid.quadrants()
+    assert count == [1, 3, 4, 1]
