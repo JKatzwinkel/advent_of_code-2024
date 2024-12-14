@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import Counter
+from functools import reduce
 from io import StringIO, TextIOBase
 import re
 from textwrap import dedent
@@ -9,7 +10,7 @@ from typing import Iterable, Iterator, Self
 import pytest
 
 
-ROBEX = re.compile(r'p=(\d+,\d+) v=(-?\d,-?\d)')
+ROBEX = re.compile(r'p=(\d+,\d+) v=(-?\d+,-?\d+)')
 
 
 def load(src: TextIOBase) -> list[Robot]:
@@ -59,10 +60,9 @@ class Grid:
 
     def tick(self, times: int = 1) -> Self:
         for robot in self.robots:
-            robot.pos = robot.pos + robot.v * times
-            robot.pos = robot.pos % V(
-                self.width, self.height
-            )
+            robot.pos = (
+                robot.pos + robot.v * times
+            ) % V(self.width, self.height)
         return self
 
     def quadrants(self) -> list[int]:
@@ -84,6 +84,9 @@ class Grid:
                 counts.items(), key=lambda t: t[0]
             )
         ]
+
+    def safety(self) -> int:
+        return reduce(int.__mul__, self.quadrants())
 
 
 class V(Iterable[int]):
@@ -207,3 +210,20 @@ def test_count_robots(example: TextIOBase) -> None:
     )
     count = grid.quadrants()
     assert count == [1, 3, 4, 1]
+    assert grid.safety() == 12
+
+
+def test_input() -> None:
+    with open('input.txt') as f:
+        robots = load(f)
+    assert len(robots) == 500
+    grid = Grid(101, 103).with_robots(robots).tick(100)
+    assert grid.safety() == 226236192
+
+
+if __name__ == '__main__':
+    with open('input.txt') as f:
+        robots = load(f)
+    grid = Grid(101, 103).with_robots(robots).tick(100)
+    with open('output.txt', 'w+') as f:
+        f.write(str(grid))
