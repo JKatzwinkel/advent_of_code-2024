@@ -52,7 +52,6 @@ class Grid:
             if c != 'O':
                 continue
             y, x = divmod(i, self.width)
-            print(f'box at ({x}, {y}) = {y * 100 + x}')
             result += y * 100 + x
         return result
 
@@ -256,3 +255,11 @@ def test_large_walk(large: StringIO) -> None:
         ##########'''
     )
     assert grid.gps() == 10092
+
+
+def test_input_part1() -> None:
+    with open('input.txt') as f:
+        grid = load(f)
+    while grid.robot.moves:
+        grid.robot.move()
+    assert grid.gps() == 1475249
