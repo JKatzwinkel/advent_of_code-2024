@@ -38,6 +38,7 @@ class Grid:
         self.width = width
         self.height = height
         self.robots: list[Robot] = []
+        self.t = 0
 
     def with_robots(self, robots: list[Robot]) -> Self:
         self.robots.extend(robots)
@@ -59,6 +60,7 @@ class Grid:
         return '\n'.join(lines)
 
     def tick(self, times: int = 1) -> Self:
+        self.t += times
         for robot in self.robots:
             robot.pos = (
                 robot.pos + robot.v * times
@@ -88,11 +90,27 @@ class Grid:
     def safety(self) -> int:
         return reduce(int.__mul__, self.quadrants())
 
+    def variance(self) -> V:
+        avg = V.sum(
+            r.pos for r in self.robots
+        ) // len(self.robots)
+        var = [
+            (abs(r.pos.x - avg.x), abs(r.pos.y - avg.y))
+            for r in self.robots
+        ]
+        return V(*reduce(
+            lambda t, u: (t[0] + u[0], t[1] + u[1]), var
+        )) // len(self.robots)
+
 
 class V(Iterable[int]):
     def __init__(self, x: int, y: int) -> None:
         self.x = x
         self.y = y
+
+    @classmethod
+    def sum(cls, vectors: Iterable[Self]) -> Self:
+        return reduce(cls.__add__, vectors)
 
     def __add__(self, v: Self) -> Self:
         x, y = v
@@ -119,6 +137,11 @@ class V(Iterable[int]):
     def __mod__(self, div: Self) -> Self:
         return self.__class__(
             self.x % div.x, self.y % div.y
+        )
+
+    def __floordiv__(self, div: int) -> Self:
+        return self.__class__(
+            self.x // div, self.y // div
         )
 
     def __repr__(self) -> str:
@@ -221,9 +244,21 @@ def test_input() -> None:
     assert grid.safety() == 226236192
 
 
+def test_variance() -> None:
+    with open('input.txt') as f:
+        grid = Grid(101, 103).with_robots(load(f))
+    var = [
+        (i+1, grid.tick().variance())
+        for i in range(104)
+    ]
+    assert min(var, key=lambda t: t[1].x)[0] == 88
+    assert min(var, key=lambda t: t[1].y)[0] == 31
+
+
 if __name__ == '__main__':
     with open('input.txt') as f:
         robots = load(f)
-    grid = Grid(101, 103).with_robots(robots).tick(100)
-    with open('output.txt', 'w+') as f:
-        f.write(str(grid))
+    grid = Grid(101, 103).with_robots(robots).tick(88)
+    while grid.variance().y > 15:
+        grid.tick(101)
+    print(f'{grid}\n{grid.t}')
