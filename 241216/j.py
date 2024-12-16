@@ -309,6 +309,12 @@ def test_cost_ex1(ex1: StringIO) -> None:
     assert p.cost == 7036
 
 
+def test_cost_ex2(ex2: StringIO) -> None:
+    maze = load(ex2)
+    p = maze.solve()
+    assert p.cost == 11048, maze.plot(p)
+
+
 def test_best_path() -> None:
     maze = load(StringIO(
         '''#######
