@@ -337,24 +337,16 @@ def test_best_path() -> None:
     )
 
 
+def test_input() -> None:
+    with open('input.txt') as f:
+        maze = load(f)
+    p = maze.solve()
+    assert p.cost == 160624
+
+
 if __name__ == '__main__':
-    maze = load(StringIO(
-        '''
-        ###############
-        #.......#....E#
-        #.#.###.#.###.#
-        #.....#.#...#.#
-        #.###.#####.#.#
-        #.#.#.......#.#
-        #.#.#####.###.#
-        #...........#.#
-        ###.#.#####.#.#
-        #...#.....#.#.#
-        #.#.#.###.#.#.#
-        #.....#...#.#.#
-        #.###.#.#.#.#.#
-        #S..#.....#...#
-        ###############'''
-    ))
-    pf = Pathfinder(maze).find()
-    print(maze.plot(pf.path))
+    with open('input.txt') as f:
+        maze = load(f)
+    p = maze.solve()
+    print(maze.plot(p))
+    print(p.cost)
