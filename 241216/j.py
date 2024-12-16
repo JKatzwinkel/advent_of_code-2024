@@ -45,15 +45,13 @@ class Maze:
         self, path: Path | None = None,
         ansi: bool = True,
     ) -> str:
-        tiles = [
-            self.tiles[
-                y*self.width:(y+1)*self.width
-            ] for y in range(self.height)
-        ]
+        tiles = self._lines()
         if path:
             tmpl = '\033[32m{}\033[00m' if ansi else '{}'
             for pos, direction in path.steps:
                 x, y = pos
+                if tiles[y][x] in 'SE':
+                    continue
                 tiles[y][x] = tmpl.format(
                     ARROWS[direction]
                 )
@@ -61,8 +59,12 @@ class Maze:
             ''.join(row) for row in tiles
         )
 
-    def __str__(self) -> str:
-        return self.plot()
+    def _lines(self) -> list[list[str]]:
+        return [
+            self.tiles[
+                y*self.width:(y+1)*self.width
+            ] for y in range(self.height)
+        ]
 
 
 DIRS = [(0, -1), (1, 0), (0, 1), (-1, 0)]
@@ -82,41 +84,62 @@ def step(
 
 
 class Pathfinder:
+    Node = NamedTuple(
+        'Node', [
+            ('direction', int),
+            ('cost', int)
+        ]
+    )
+
     def __init__(self, maze: Maze) -> None:
         self.maze = maze
         self.frontier = {
-            self.maze.start: (1, 0)
+            self.maze.start: self.__class__.Node(1, 0)
         }
         self.visited: dict[
-            tuple[int, int], tuple[int, int]
-        ] = defaultdict(
-            lambda: (1, -1)
+            tuple[int, int], Pathfinder.Node
+        ] = {}
+        self.results: list[Path] = []
+
+    def _probe(
+        self, pos: tuple[int, int], direction: int,
+        cost: int
+    ) -> None:
+        if self.maze[pos] == '#':
+            return
+        current = self.frontier.get(
+            pos, self.visited.get(pos)
         )
+        if not current or current.cost > cost:
+            self.frontier[pos] = self.__class__.Node(
+                direction, cost
+            )
+
+    def go(self) -> Self:
+        pos, node = min(
+            self.frontier.items(), key=lambda t: t[1][1]
+        )
+        self.frontier.pop(pos)
+        current = self.visited.get(pos)
+        if not current or current.cost > node.cost:
+            self.visited[pos] = self.__class__.Node(
+                node.direction, node.cost
+            )
+        if self.maze[pos] == 'E':
+            self.backtrack(pos)
+            return self
+        for turn in range(-1, 2):
+            fee = 1 + 1000 * abs(turn)
+            adj = step(pos, node.direction + turn)
+            self._probe(
+                adj, node.direction + turn,
+                node.cost + fee
+            )
+        return self
 
     def find(self) -> Self:
         while self.frontier:
-            pos, node = self.frontier.popitem()
-            direction, cost = node
-            for turn in range(-1, 2):
-                fee = 1 + 999 * abs(turn)
-                adj = step(pos, direction + turn)
-                if self.maze[adj] == '#':
-                    continue
-                best_dir, best_cost = self.visited[adj]
-                if best_cost < 0:
-                    self.frontier[adj] = (
-                        direction + turn, cost + fee
-                    )
-                    continue
-                if best_cost > cost + fee:
-                    continue
-                self.visited[adj] = (
-                    direction + turn, cost + fee
-                )
-            self.visited[pos] = direction, cost
-            if self.maze[pos] == 'E':
-                self.backtrack(pos)
-                break
+            self.go()
         return self
 
     def backtrack(self, pos: tuple[int, int]) -> Self:
@@ -126,8 +149,35 @@ class Pathfinder:
             pos = step(pos, direction + 2)
             path.append((pos, direction))
             direction, _ = self.visited[pos]
-        self.path = Path(path[::-1], cost)
+        self.results.append(Path(path[::-1], cost))
         return self
+
+    @property
+    def path(self) -> Path:
+        return min(self.results, key=lambda p: p.cost)
+
+    def __str__(self) -> str:
+        def _plot(
+            nodes: dict[tuple[int, int], Pathfinder.Node],
+            ansi: str
+        ) -> None:
+            for pos, node in nodes.items():
+                x, y = pos
+                direction, cost = node
+                lines[y][x] = (
+                    f'{ansi}'
+                    f'{ARROWS[direction % 4]}{cost:>4}'
+                    '\033[0m'
+                )
+        lines = [
+            [tile * 5 for tile in line]
+            for line in self.maze._lines()
+        ]
+        _plot(self.visited, '\033[32m')
+        _plot(self.frontier, '\033[34m')
+        return '\n'.join(
+            ' '.join(line) for line in lines
+        )
 
 
 class Path:
@@ -232,7 +282,6 @@ def expect(
 def test_plot_ex1(ex1: StringIO) -> None:
     maze = load(ex1)
     p = maze.solve()
-    print(maze.plot(p))
     expect(
         maze, p,
         '''\
@@ -243,11 +292,11 @@ def test_plot_ex1(ex1: StringIO) -> None:
         #.###.#####.#^#
         #.#.#.......#^#
         #.#.#####.###^#
-        #..>>>>>>>>v#^#
-        ###^#.#####v#^#
-        #>>^#.....#v#^#
-        #^#.#.###.#v#^#
-        #^....#...#v#^#
+        #....>>>>>>v#^#
+        ###.#^#####v#^#
+        #...#^....#v#^#
+        #.#.#^###.#v#^#
+        #>>>>^#...#v#^#
         #^###.#.#.#v#^#
         #S..#.....#>>^#
         ###############'''
@@ -257,5 +306,49 @@ def test_plot_ex1(ex1: StringIO) -> None:
 def test_cost_ex1(ex1: StringIO) -> None:
     maze = load(ex1)
     p = maze.solve()
-    assert len(p) == 43
     assert p.cost == 7036
+
+
+def test_best_path() -> None:
+    maze = load(StringIO(
+        '''#######
+           #....E#
+           #.###.#
+           #...#.#
+           #S#...#
+           #######'''
+    ))
+    p = maze.solve()
+    expect(
+        maze, p,
+        '''\
+           #######
+           #>>>>E#
+           #^###.#
+           #^..#.#
+           #S#...#
+           #######'''
+    )
+
+
+if __name__ == '__main__':
+    maze = load(StringIO(
+        '''
+        ###############
+        #.......#....E#
+        #.#.###.#.###.#
+        #.....#.#...#.#
+        #.###.#####.#.#
+        #.#.#.......#.#
+        #.#.#####.###.#
+        #...........#.#
+        ###.#.#####.#.#
+        #...#.....#.#.#
+        #.#.#.###.#.#.#
+        #.....#...#.#.#
+        #.###.#.#.#.#.#
+        #S..#.....#...#
+        ###############'''
+    ))
+    pf = Pathfinder(maze).find()
+    print(maze.plot(pf.path))
