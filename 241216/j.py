@@ -25,7 +25,7 @@ class Maze:
     def __init__(self) -> None:
         self.width = 0
         self.height = 0
-        self.tiles = []
+        self.tiles: list[str] = []
 
     @property
     def start(self) -> tuple[int, int]:
@@ -41,16 +41,22 @@ class Maze:
     def solve(self) -> Path:
         return Pathfinder(self).find().path
 
-    def plot(self, path: Path | None = None) -> str:
+    def plot(
+        self, path: Path | None = None,
+        ansi: bool = True,
+    ) -> str:
         tiles = [
             self.tiles[
                 y*self.width:(y+1)*self.width
             ] for y in range(self.height)
         ]
         if path:
+            tmpl = '\033[32m{}\033[00m' if ansi else '{}'
             for pos, direction in path.steps:
                 x, y = pos
-                tiles[y][x] = ARROWS[direction]
+                tiles[y][x] = tmpl.format(
+                    ARROWS[direction]
+                )
         return '\n'.join(
             ''.join(row) for row in tiles
         )
@@ -76,20 +82,14 @@ def step(
 
 
 class Pathfinder:
-    Node = NamedTuple(
-        'Node', [
-            ('parent', tuple[int, int]),
-            ('direction', int),
-            ('cost', int)
-        ]
-    )
-
     def __init__(self, maze: Maze) -> None:
         self.maze = maze
         self.frontier = {
             self.maze.start: (1, 0)
         }
-        self.visited = defaultdict(
+        self.visited: dict[
+            tuple[int, int], tuple[int, int]
+        ] = defaultdict(
             lambda: (1, -1)
         )
 
@@ -211,11 +211,30 @@ def test_solve() -> None:
     ]
 
 
+def expect(
+    maze: Maze, path: Path, expected: str
+) -> None:
+    actual = maze.plot(path)
+    side_by_side = zip(
+        dedent(expected).split('\n'),
+        actual.split('\n'),
+    )
+    out = '\n'.join(
+        [' | '.join(sides) for sides in side_by_side]
+    )
+    assert maze.plot(
+        path, ansi=False
+    ) == dedent(expected), (
+        f'expected | got\n{out}'
+    )
+
+
 def test_plot_ex1(ex1: StringIO) -> None:
     maze = load(ex1)
     p = maze.solve()
     print(maze.plot(p))
-    assert maze.plot(p) == dedent(
+    expect(
+        maze, p,
         '''\
         ###############
         #.......#....E#
