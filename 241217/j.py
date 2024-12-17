@@ -123,6 +123,10 @@ class Machine:
         assert isinstance(meth, FunctionType)
         return meth
 
+    @property
+    def stdout(self) -> str:
+        return ','.join(map(str, self.output))
+
 
 def test_load() -> None:
     machine = load(StringIO(EXAMPLE))
@@ -181,10 +185,13 @@ def test_instructions(
 
 def test_run_example() -> None:
     m = load(StringIO(EXAMPLE))
-    m.run()
-    assert ','.join(
-        map(str, m.output)
-    ) == '4,6,3,5,6,3,5,2,1,0'
+    assert m.run().stdout == '4,6,3,5,6,3,5,2,1,0'
+
+
+def test_input() -> None:
+    with open('input.txt') as f:
+        m = load(f)
+    assert m.run().stdout == '2,1,4,0,7,4,0,2,3'
 
 
 if __name__ == '__main__':
