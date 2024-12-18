@@ -103,6 +103,7 @@ class Pathfinder:
         self.visited: dict[P, tuple[P, int]] = {}
         self.frontier = [((0, 0), (0, 0), 0)]
         self.target = (mem.width - 1, mem.width - 1)
+        self.result: list[P] = []
 
     def find(self, target: P | None = None) -> Self:
         self.target = target or self.target
@@ -121,6 +122,8 @@ class Pathfinder:
             return False
         for direction in DIRS:
             adj = step(pos, direction)
+            if adj == via:
+                continue
             if self._improves(adj, cost + 1):
                 self.frontier.append(
                     (adj, pos, cost + 1)
@@ -194,5 +197,19 @@ if __name__ == '__main__':
     with open('input.txt') as f:
         mem = load(f, 71)
     mem.fall(1024)
-    p = mem.escape()
-    print(len(p))
+    print(f'{mem}')
+    while (path := mem.escape()):
+        skip = 0
+        while mem.falling[skip] not in path:
+            skip += 1
+        if skip:
+            mem.fall(skip)
+        pos = mem.falling[0]
+        mem.fall()
+        print(
+            '\n'.join(
+                [f"\033[A{' ' * mem.width}\033[A"] * mem.width
+            )
+        )
+        print(f'{mem}')
+    print(f'{pos}. {len(mem.falling)} remaining')
