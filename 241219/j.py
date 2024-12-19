@@ -46,10 +46,11 @@ def widest_first(
 
 class Solver:
     def __init__(
-        self, towels: set[str], designs: list[str]
+        self, towels: set[str],
+        designs: list[str] | None = None
     ) -> None:
         self.towels = towels
-        self.designs = designs
+        self.designs = designs or []
 
     @functools.cache
     def solvable(self, design: str) -> bool:
@@ -71,11 +72,18 @@ class Solver:
                     p := p and self.solvable(segm)
                 ):
                     break
-                self.towels.add(segm)
             if p:
-                self.towels.add(design)
                 return True
         return False
+
+    @functools.cache
+    def solutions(self, design: str) -> int:
+        result = int(not design or design in self.towels)
+        for i in range(0, len(design)):
+            left, right = design[:i], design[i:]
+            if left in self.towels:
+                result += self.solutions(right)
+        return result
 
     def count_solvable(self) -> int:
         return sum(
@@ -122,18 +130,23 @@ def test_input() -> None:
         ('ubwu', 0), ('bbrgwb', 0)
     ]
 )
-def test_possible_solutions(
+def test_count_example_solutions(
     design: str, expected: int
 ) -> None:
     s = load(StringIO(EXAMPLE))
     assert s.solutions(design) == expected
 
 
+def test_solutions() -> None:
+    s = Solver({'br', 'b', 'r'})
+    assert s.solutions('') == 1
+    assert s.solutions('r') == 1
+    assert s.solutions('br') == 2
+
+
 if __name__ == '__main__':
     with open('input.txt') as f:
         s = load(f)
     print(sorted(s.towels, key=len, reverse=True))
-    print(
-        f'solvable: {s.count_solvable()}'
-        f'/{len(s.designs)}'
-    )
+    solutions = sum(map(s.solutions, s.designs))
+    print(solutions)
