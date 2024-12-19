@@ -3,6 +3,8 @@ from __future__ import annotations
 import functools
 from io import TextIOBase, StringIO
 
+import pytest
+
 EXAMPLE = '''
 r, wr, b, g, bwu, rb, gb, br
 
@@ -110,6 +112,21 @@ def test_input() -> None:
         'ugrwbburbbgrgruwrgrwgwbgrgugubbwwurrgruww'
         'burgggrrgrgwggwbg'
     )
+
+
+@pytest.mark.parametrize(
+    'design, expected',
+    [
+        ('brwrr', 2), ('bggr', 1), ('gbbr', 4),
+        ('rrbgbr', 6), ('bwurrg', 1), ('brgr', 2),
+        ('ubwu', 0), ('bbrgwb', 0)
+    ]
+)
+def test_possible_solutions(
+    design: str, expected: int
+) -> None:
+    s = load(StringIO(EXAMPLE))
+    assert s.solutions(design) == expected
 
 
 if __name__ == '__main__':
