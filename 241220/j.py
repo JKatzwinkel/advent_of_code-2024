@@ -35,13 +35,6 @@ class Maze:
         x, y = pos
         return self.tiles[x+y*self.width]
 
-    def __contains__(self, pos: P) -> bool:
-        x, y = pos
-        return (
-            0 <= x < self.width and
-            0 <= y < self.height
-        )
-
     def solve(self) -> Self:
         p = self.start
         self.path = [p]
@@ -81,7 +74,7 @@ def find_in_range(
     path: list[P], max_dist: int = 2, min_dist: int = 2
 ) -> list[tuple[P, int, P, int]]:
     results = []
-    for i in range(len(path) - 3):
+    for i in range(len(path) - min_dist - 1):
         for j in range(i + min_dist + 1, len(path)):
             if 2 <= dist(path[i], path[j]) <= max_dist:
                 results.append(
