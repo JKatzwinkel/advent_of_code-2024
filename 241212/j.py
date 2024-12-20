@@ -166,12 +166,10 @@ class Region(Iterable[Point]):
 
     def add_all(self, other: Self) -> Self:
         self.plots.update(other.plots)
-        self._perimeter = 0
         return self
 
     def add(self, plot: Point) -> Self:
         self.plots.add(plot)
-        self._perimeter = 0
         return self
 
     def __contains__(self, plot: Point) -> bool:
@@ -378,9 +376,11 @@ def test_smol_sides(smol_example: StringIO) -> None:
 
 
 def test_color_plot() -> None:
-    garden, regions = load(StringIO('a'))
-    assert plot_garden(garden, regions[0]).endswith(
-        '\033[00m'
+    garden, regions = load(StringIO('abc'))
+    assert plot_garden(
+        garden, regions[1]
+    ).endswith('\033[00m'), '\n' + plot_garden(
+        garden, regions[1], ansi=False
     )
 
 
