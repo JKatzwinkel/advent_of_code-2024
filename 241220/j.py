@@ -98,23 +98,27 @@ class Pathfinder:
         return self.visited[pos][1] > cost
 
 
-def shortcuts(path: list[P]) -> dict[int, int]:
+def shortcuts(
+    path: list[P], max_dist: int = 2
+) -> dict[int, int]:
     savings: dict[int, int] = Counter()
-    opposites = find_opposites(path)
-    for a, b in opposites:
-        saves = path.index(b) - path.index(a) - 2
+    opposites = find_in_range(path, max_dist=max_dist)
+    for a, i, b, j in opposites:
+        saves = j - i - dist(a, b)
         savings[saves] += 1
     return savings
 
 
-def find_opposites(path: list[P]) -> list[tuple[P, P]]:
+def find_in_range(
+    path: list[P], max_dist: int = 2
+) -> list[tuple[P, int, P, int]]:
     results = []
     for i in range(len(path) - 3):
-        tail = path[i+3:]
-        for p in tail:
-            if dist(path[i], p) != 2:
-                continue
-            results.append((path[i], p))
+        for j in range(i + 3, len(path)):
+            if 2 <= dist(path[i], path[j]) <= max_dist:
+                results.append(
+                    (path[i], i, path[j], j)
+                )
     return results
 
 
@@ -127,9 +131,9 @@ def test_find_opposites() -> None:
         (1, 1), (1, 2), (1, 3), (2, 3),
         (3, 3), (3, 2), (3, 1)
     ]
-    assert find_opposites(path) == [
-        ((1, 1), (3, 1)),
-        ((1, 2), (3, 2)),
+    assert find_in_range(path) == [
+        ((1, 1), 0, (3, 1), 6),
+        ((1, 2), 1, (3, 2), 5),
     ]
 
 
@@ -171,8 +175,22 @@ def test_cheats() -> None:
     }
 
 
+def test_cheats_range_20() -> None:
+    m = load(StringIO(EXAMPLE)).solve()
+    s = shortcuts(m.path, 20)
+    assert {
+        k: v for k, v in s.items()
+        if k >= 50
+    } == {
+        50: 32, 52: 31, 54: 29, 56: 39,
+        58: 25, 60: 23, 62: 20, 64: 19,
+        66: 12, 68: 14, 70: 12, 72: 22,
+        74: 4, 76: 3,
+    }
+
+
 if __name__ == '__main__':
     with open('input.txt') as f:
         m = load(f).solve()
-    s = shortcuts(m.path)
+    s = shortcuts(m.path, 20)
     print(sum(v for k, v in s.items() if k >= 100))
