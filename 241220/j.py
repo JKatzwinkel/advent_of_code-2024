@@ -43,7 +43,15 @@ class Maze:
         )
 
     def solve(self) -> Self:
-        self.path = Pathfinder(self).find().path
+        p = self.start
+        self.path = [p]
+        while self[p] != 'E':
+            for d in DIRS:
+                a = step(p, d)
+                if self[a] == '#' or a in self.path:
+                    continue
+                self.path.append(p := a)
+                break
         return self
 
 
@@ -56,53 +64,13 @@ def step(pos: P, direction: P) -> P:
     return x, y
 
 
-class Pathfinder:
-    def __init__(self, maze: Maze) -> None:
-        self.maze = maze
-        self.visited: dict[P, tuple[P, int]] = {}
-        self.frontier = [
-            (self.maze.start, (-1, -1), 0)
-        ]
-        self.path: list[P] = []
-
-    def find(self) -> Self:
-        while self.search():
-            ...
-        return self
-
-    def search(self) -> bool:
-        pos, via, cost = self.frontier.pop(0)
-        if not self._better(pos, cost):
-            return len(self.frontier) > 0
-        self.visited[pos] = (via, cost)
-        if self.maze[pos] == 'E':
-            self.backtrack(pos)
-            return False
-        for d in DIRS:
-            adj = step(pos, d)
-            if self._better(adj, cost + 1):
-                self.frontier.append((adj, pos, cost + 1))
-        return len(self.frontier) > 0
-
-    def backtrack(self, pos: P) -> None:
-        path = [pos]
-        while (pos := self.visited[pos][0]) in self.maze:
-            path.append(pos)
-        self.path = path[::-1]
-
-    def _better(self, pos: P, cost: int) -> bool:
-        if self.maze[pos] == '#':
-            return False
-        if pos not in self.visited:
-            return True
-        return self.visited[pos][1] > cost
-
-
 def shortcuts(
-    path: list[P], max_dist: int = 2
+    path: list[P], max_dist: int = 2, min_dist: int = 2
 ) -> dict[int, int]:
     savings: dict[int, int] = Counter()
-    opposites = find_in_range(path, max_dist=max_dist)
+    opposites = find_in_range(
+        path, max_dist=max_dist, min_dist=min_dist
+    )
     for a, i, b, j in opposites:
         saves = j - i - dist(a, b)
         savings[saves] += 1
@@ -110,11 +78,11 @@ def shortcuts(
 
 
 def find_in_range(
-    path: list[P], max_dist: int = 2
+    path: list[P], max_dist: int = 2, min_dist: int = 2
 ) -> list[tuple[P, int, P, int]]:
     results = []
     for i in range(len(path) - 3):
-        for j in range(i + 3, len(path)):
+        for j in range(i + min_dist + 1, len(path)):
             if 2 <= dist(path[i], path[j]) <= max_dist:
                 results.append(
                     (path[i], i, path[j], j)
@@ -177,7 +145,7 @@ def test_cheats() -> None:
 
 def test_cheats_range_20() -> None:
     m = load(StringIO(EXAMPLE)).solve()
-    s = shortcuts(m.path, 20)
+    s = shortcuts(m.path, 20, 50)
     assert {
         k: v for k, v in s.items()
         if k >= 50
@@ -192,5 +160,5 @@ def test_cheats_range_20() -> None:
 if __name__ == '__main__':
     with open('input.txt') as f:
         m = load(f).solve()
-    s = shortcuts(m.path, 20)
+    s = shortcuts(m.path, 20, 100)
     print(sum(v for k, v in s.items() if k >= 100))
