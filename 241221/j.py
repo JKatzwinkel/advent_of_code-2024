@@ -138,6 +138,19 @@ def find_chain_inputs(
     return inputs
 
 
+def complexity(pads: list[Pad], code: str) -> int:
+    inputs = find_chain_inputs(pads, code)
+    return int(code[:-1]) * len(inputs[0])
+
+
+def sum_complexity(
+    pads: list[Pad], codes: list[str]
+) -> int:
+    return sum(
+        complexity(pads, code) for code in codes
+    )
+
+
 def test_inputs() -> None:
     pad = Pad(NUMPAD)
     inputs = find_inputs(pad, '029A')
@@ -196,14 +209,31 @@ def test_chain_inputs(
     ]
 )
 def test_shortest_input(code: str, moves: str) -> None:
-    pads = [Pad(DIRPAD), Pad(DIRPAD), Pad(NUMPAD)]
+    pads = PUZZLE_PADS
     assert moves in find_chain_inputs(pads, code)
 
 
+def test_complexity() -> None:
+    codes = [
+        '029A',
+        '980A',
+        '179A',
+        '456A',
+        '379A',
+    ]
+    assert sum_complexity(PUZZLE_PADS, codes) == 126384
+
+
+PUZZLE_PADS = [Pad(DIRPAD), Pad(DIRPAD), Pad(NUMPAD)]
+
+
 if __name__ == '__main__':
-    inputs = find_inputs(Pad(NUMPAD), '179A')
-    for moves in inputs:
-        print(moves)
-        print('\n'.join(
-            find_inputs(Pad(DIRPAD), moves)
-        ))
+    codes = [
+        '935A',
+        '319A',
+        '480A',
+        '789A',
+        '176A',
+    ]
+    pads = PUZZLE_PADS
+    print(sum_complexity(pads, codes))
