@@ -29,9 +29,12 @@ def step(pos: P, direction: P) -> P:
     return x, y
 
 
+NUMPAD = '789456123 0a'
+
+
 class Pad:
     '''
-    >>> Pad('123456789 0a').pos('A')
+    >>> Pad(NUMPAD).pos('A')
     (2, 3)
 
     >>> Pad(' ^a<v>').height
@@ -44,7 +47,7 @@ class Pad:
     ['<v<', 'v<<']
 
     >>> Pad('123456').moves('1', '6')
-    ['
+    ['v>>', '>v>', '>>v']
     '''
 
     def __init__(self, buttons: str) -> None:
@@ -95,3 +98,43 @@ class Pad:
 
 DIRS = [(0, -1), (1, 0), (0, 1), (-1, 0)]
 ARROWS = '^>v<'
+
+
+class Robot:
+    def __init__(self, pad: Pad) -> None:
+        self.arm = pad.pos('A')
+        self.pad = pad
+
+    def punch_in(self, code: str) -> list[str]:
+        moves: list[str] = [
+            f'{m}A' for m in self.pad.moves(
+                'A', code[0]
+            )
+        ]
+        for button1, button2 in zip(
+            code[:-1], code[1::]
+        ):
+            moves = [
+                prev + cur + 'A'
+                for prev, cur in itertools.product(
+                    moves, self.pad.moves(
+                        button1, button2
+                    )
+                )
+            ]
+        return moves
+
+
+def find_inputs(pad: Pad, code: str) -> list[str]:
+    bot = Robot(pad)
+    return bot.punch_in(code)
+
+
+def test_inputs() -> None:
+    pad = Pad(NUMPAD)
+    inputs = find_inputs(pad, '029A')
+    assert set(inputs) == {
+        '<A^A>^^AvvvA',
+        '<A^A^>^AvvvA',
+        '<A^A^^>AvvvA',
+    }
