@@ -1,5 +1,9 @@
 from functools import reduce
 import itertools
+from typing import Iterable
+
+import pytest
+
 
 type P = tuple[int, int]
 
@@ -30,6 +34,7 @@ def step(pos: P, direction: P) -> P:
 
 
 NUMPAD = '789456123 0a'
+DIRPAD = ' ^a<v>'
 
 
 class Pad:
@@ -66,13 +71,14 @@ class Pad:
                 lambda p, d: p + [step(p[-1], d)],
                 directions, [self.pos(a)]
             )
-            if all(pos in self for pos in path):
-                results.append(
-                    ''.join(
-                        ARROWS[DIRS.index(d)]
-                        for d in directions
-                    )
+            if any(pos not in self for pos in path):
+                continue
+            results.append(
+                ''.join(
+                    ARROWS[DIRS.index(d)]
+                    for d in directions
                 )
+            )
         return results
 
     def pos(self, button: str) -> P:
@@ -88,11 +94,6 @@ class Pad:
 
     def __contains__(self, pos: P) -> bool:
         x, y = pos
-        if not (
-            0 <= x < self.width and
-            0 <= y < self.height
-        ):
-            return False
         return self.btn((x, y)) != ' '
 
 
@@ -100,34 +101,41 @@ DIRS = [(0, -1), (1, 0), (0, 1), (-1, 0)]
 ARROWS = '^>v<'
 
 
-class Robot:
-    def __init__(self, pad: Pad) -> None:
-        self.arm = pad.pos('A')
-        self.pad = pad
-
-    def punch_in(self, code: str) -> list[str]:
-        moves: list[str] = [
-            f'{m}A' for m in self.pad.moves(
-                'A', code[0]
+def find_inputs(pad: Pad, code: str) -> list[str]:
+    moves: list[str] = [
+        f'{m}A' for m in pad.moves(
+            'A', code[0]
+        )
+    ]
+    for button1, button2 in zip(
+        code[:-1], code[1::]
+    ):
+        moves = [
+            prev + cur + 'A'
+            for prev, cur in itertools.product(
+                moves, pad.moves(
+                    button1, button2
+                )
             )
         ]
-        for button1, button2 in zip(
-            code[:-1], code[1::]
-        ):
-            moves = [
-                prev + cur + 'A'
-                for prev, cur in itertools.product(
-                    moves, self.pad.moves(
-                        button1, button2
-                    )
-                )
-            ]
-        return moves
+    return moves
 
 
-def find_inputs(pad: Pad, code: str) -> list[str]:
-    bot = Robot(pad)
-    return bot.punch_in(code)
+def find_chain_inputs(
+    pads: list[Pad], code: str
+) -> list[str]:
+    inputs: list[str] = [code]
+    for pad in pads[::-1]:
+        candidates = [
+            moves for current in inputs
+            for moves in find_inputs(pad, current)
+        ]
+        shortest = min(map(len, candidates))
+        inputs = [
+            moves for moves in candidates
+            if len(moves) == shortest
+        ]
+    return inputs
 
 
 def test_inputs() -> None:
@@ -138,3 +146,64 @@ def test_inputs() -> None:
         '<A^A^>^AvvvA',
         '<A^A^^>AvvvA',
     }
+
+
+@pytest.mark.parametrize(
+    'buttons, moves',
+    [
+        (
+            (DIRPAD, NUMPAD),
+            'v<<A>>^A<A>AvA<^AA>A<vAAA>^A'
+        ),
+        (
+            (DIRPAD, DIRPAD, NUMPAD),
+            '<vA<AA>>^AvAA<^A>A<v<A>>^AvA^A<vA>^A'
+            '<v<A>^A>AAvA^A<v<A>A>^AAAvA<^A>A'
+        )
+    ]
+)
+def test_chain_inputs(
+    buttons: Iterable[str], moves: str
+) -> None:
+    pads = [Pad(pad) for pad in buttons]
+    inputs = find_chain_inputs(pads, '029A')
+    assert moves in inputs
+
+
+@pytest.mark.parametrize(
+    'code, moves',
+    [
+        (
+            '029A', '<vA<AA>>^AvAA<^A>A<v<A>>^AvA^A<v'
+            'A>^A<v<A>^A>AAvA^A<v<A>A>^AAAvA<^A>A'
+        ),
+        (
+            '980A', '<v<A>>^AAAvA^A<vA<AA>>^AvAA<^A>'
+            'A<v<A>A>^AAAvA<^A>A<vA>^A<A>A'
+        ),
+        (
+            '179A', '<v<A>>^A<vA<A>>^AAvAA<^A>A<v<A>>'
+            '^AAvA^A<vA>^AA<A>A<v<A>A>^AAAvA<^A>A'
+        ),
+        (
+            '456A', '<v<A>>^AA<vA<A>>^AAvAA<^A>A<vA>^'
+            'A<A>A<vA>^A<A>A<v<A>A>^AAvA<^A>A'
+        ),
+        (
+            '379A', '<v<A>>^AvA^A<vA<AA>>^AAvA<^A>AAv'
+            'A^A<vA>^AA<A>A<v<A>A>^AAAvA<^A>A'
+        )
+    ]
+)
+def test_shortest_input(code: str, moves: str) -> None:
+    pads = [Pad(DIRPAD), Pad(DIRPAD), Pad(NUMPAD)]
+    assert moves in find_chain_inputs(pads, code)
+
+
+if __name__ == '__main__':
+    inputs = find_inputs(Pad(NUMPAD), '179A')
+    for moves in inputs:
+        print(moves)
+        print('\n'.join(
+            find_inputs(Pad(DIRPAD), moves)
+        ))
