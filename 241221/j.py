@@ -19,12 +19,10 @@ def steps(a: P, b: P) -> list[P]:
     '''
     dx, dy = diff(a, b)
     result = []
-    result += [
-        (0, 0) if dx == 0 else (dx // abs(dx), 0)
-    ] * abs(dx)
-    result += [
-            (0, 0) if dy == 0 else (0, dy // abs(dy))
-    ] * abs(dy)
+    if dx != 0:
+        result += [(dx // abs(dx), 0)] * abs(dx)
+    if dy != 0:
+        result += [(0, dy // abs(dy))] * abs(dy)
     return result
 
 
