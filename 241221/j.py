@@ -1,4 +1,4 @@
-from functools import reduce
+from functools import cache, reduce
 import itertools
 from typing import Iterable
 
@@ -45,6 +45,9 @@ class Pad:
     >>> Pad(' ^a<v>').height
     2
 
+    Empty grid positions are not considered part of the
+    pad:
+
     >>> (0, 0) in Pad(' ^a<v>')
     False
 
@@ -53,13 +56,48 @@ class Pad:
 
     >>> Pad('123456').moves('1', '6')
     ['v>>', '>v>', '>>v']
+
+    Pad instances are re-used based on their button
+    sets.
+
+    >>> Pad(NUMPAD) is Pad(NUMPAD)
+    True
+
+    Robots can't move over a position where there is
+    not button or it will panic.
+    Panic moves are being avoided:
+
+    >>> Pad(NUMPAD)
+    7|8|9
+    4|5|6
+    1|2|3
+     |0|a
+
+    note that there is not button next to the `0` button,
+    so there is only two possible ways of getting from
+    the 'a' to the '1' button as opposed to getting from
+    `7` to `6`:
+
+    >>> Pad(NUMPAD).moves('6', '7')
+    ['<^<', '<<^', '^<<']
+
+    >>> Pad(NUMPAD).moves('a', '1')
+    ['<^<', '^<<']
+
     '''
+    _pads: dict[str, 'Pad'] = {}
 
     def __init__(self, buttons: str) -> None:
         self.buttons = buttons
         self.width = 3
         self.height = len(buttons) // self.width
 
+    def __new__(cls, buttons: str) -> 'Pad':
+        if buttons not in cls._pads:
+            cls._pads[buttons] = super().__new__(cls)
+        return cls._pads[buttons]
+
+    @cache
     def moves(self, a: str, b: str) -> list[str]:
         results = []
         for directions in set(
@@ -93,8 +131,15 @@ class Pad:
         return self.buttons[x + y * self.width]
 
     def __contains__(self, pos: P) -> bool:
-        x, y = pos
-        return self.btn((x, y)) != ' '
+        return self.btn(pos) != ' '
+
+    def __repr__(self) -> str:
+        return '\n'.join(
+            '|'.join(self.buttons[
+                i*self.width:(i+1)*self.width
+            ])
+            for i in range(self.height)
+        )
 
 
 DIRS = [(0, -1), (1, 0), (0, 1), (-1, 0)]
