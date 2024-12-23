@@ -186,4 +186,12 @@ def test_fix_single_order() -> None:
 if __name__ == '__main__':
     with open('input.txt') as f:
         updates = load(f)
-    print(sum(map(middle_page, updates.valid())))
+    print('part 1:', sum(map(middle_page, updates.valid())))
+    print(
+        'part 2:', sum(
+            map(
+                middle_page,
+                map(updates.fix, updates.invalid())
+            )
+        )
+    )
