@@ -36,6 +36,9 @@ class Updates(Iterable[list[int]]):
         return (
             right in self.order[left].comes_before or
             left in self.order[right].comes_after
+        ) and not (
+            right in self.order[left].comes_after or
+            left in self.order[right].comes_before
         )
 
     def validate(self, pages: Iterable[int]) -> bool:
@@ -47,9 +50,30 @@ class Updates(Iterable[list[int]]):
         )
 
     def valid(self) -> list[list[int]]:
-        return list(
-            filter(self.validate, self.updates)
-        )
+        return list(filter(self.validate, self))
+
+    def invalid(self) -> list[list[int]]:
+        return [
+            pages for pages in self
+            if not self.validate(pages)
+        ]
+
+    def fix(self, pages: Iterable[int]) -> list[int]:
+        pages = list(pages)
+        if len(pages) == 1:
+            return pages
+        left = self.fix(pages[:len(pages) // 2])
+        right = self.fix(pages[len(pages) // 2:])
+        merged = []
+        while left and right:
+            merged.append(
+                left.pop(0)
+                if self.in_order(left[0], right[0])
+                else right.pop(0)
+            )
+        merged.extend(left)
+        merged.extend(right)
+        return merged
 
     def __contains__(self, pages: list[int]) -> bool:
         return pages in self.updates
@@ -67,6 +91,12 @@ class Order:
         self.page = 0
         self.comes_after: set[int] = set()
         self.comes_before: set[int] = set()
+
+    def __repr__(self) -> str:
+        return (
+            f'page {self.page} comes after {self.comes_after}'
+            f' and before {self.comes_before}'
+        )
 
 
 def middle_page(pages: list[int]) -> int:
@@ -131,6 +161,26 @@ def test_validate_order() -> None:
 def test_middle_pages_of_valid() -> None:
     updates = load(StringIO(SAMPLE))
     assert sum(map(middle_page, updates.valid())) == 143
+
+
+def test_fix_order() -> None:
+    updates = load(StringIO(SAMPLE))
+    fixed = [
+        updates.fix(pages) for pages in updates.invalid()
+    ]
+    print(updates.order[13])
+    print(updates.order[97])
+    assert fixed == [
+        [97, 75, 47, 61, 53],
+        [61, 29, 13],
+        [97, 75, 47, 29, 13],
+    ]
+
+
+def test_fix_single_order() -> None:
+    updates = load(StringIO(SAMPLE))
+    fixed = updates.fix([97, 13, 75, 29, 47])
+    assert fixed == [97, 75, 47, 29, 13]
 
 
 if __name__ == '__main__':
