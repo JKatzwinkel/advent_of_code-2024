@@ -1,6 +1,6 @@
 from collections import defaultdict
 from io import StringIO, TextIOBase
-import itertools
+from itertools import combinations
 
 
 def load(src: TextIOBase) -> dict[str, set[str]]:
@@ -27,22 +27,22 @@ def find_cliques(
             if max_size:
                 cliques.update(
                     frozenset(combi)
-                    for combi in itertools.combinations(
+                    for combi in combinations(
                         R, max_size
                     )
                 )
             else:
                 cliques.add(frozenset(R))
-        for v in {v for v in P}:
+            return
+        u = (P | X).pop()
+        for v in P - N[u]:
             bron_kerbosch(
-                R | {v},
-                P.intersection(graph[v]),
-                X.intersection(graph[v])
+                R | {v}, P & N[v], X & N[v]
             )
             P -= {v}
             X |= {v}
 
-    bron_kerbosch(set(), set(graph.keys()), set())
+    bron_kerbosch(set(), set(N := graph), set())
     return [set(clique) for clique in cliques]
 
 
