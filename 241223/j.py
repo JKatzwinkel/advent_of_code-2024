@@ -43,7 +43,7 @@ def find_cliques(
             X |= {v}
 
     bron_kerbosch(set(), set(graph.keys()), set())
-    return list(cliques)
+    return [set(clique) for clique in cliques]
 
 
 SAMPLE = '''
@@ -107,12 +107,16 @@ def test_input() -> None:
     assert len(with_t) == 1368
 
 
+def test_largest_clique() -> None:
+    graph = load(StringIO(SAMPLE))
+    cliques = find_cliques(graph)
+    largest = max(cliques, key=len)
+    assert ','.join(sorted(largest)) == 'co,de,ka,ta'
+
+
 if __name__ == '__main__':
     with open('input.txt') as f:
         graph = load(f)
-    cliques = find_cliques(graph, 3)
-    with_t = [
-        clique for clique in cliques
-        if any(c[0] == 't' for c in clique)
-    ]
-    print(len(with_t))
+    cliques = find_cliques(graph)
+    largest = max(cliques, key=len)
+    print(','.join(sorted(largest)))
