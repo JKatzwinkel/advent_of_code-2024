@@ -225,6 +225,27 @@ class Circuit:
         )) is int
         return result == dec(self.output())
 
+    def swap(
+        self, wire1: str, wire2: str
+    ) -> Circuit:
+        result = Circuit()
+        result.inputs = {
+            w: c
+            for w, c in self.inputs.items()
+        }
+        result.wires = {
+            w: g
+            for w, g in self.wires.items()
+        }
+        (
+            result.wires[wire1],
+            result.wires[wire2]
+        ) = (
+            result.wires[wire2],
+            result.wires[wire1]
+        )
+        return result
+
 
 def gate(op: Op, a: bool, b: bool) -> bool:
     '''
@@ -285,6 +306,15 @@ def test_circuit_input() -> None:
     c = load(StringIO(t.FU))
     assert not c.computes('&')
     c = load(StringIO(t.FU_FIXED))
+    assert c.computes('&')
+
+
+def test_circuit_swap() -> None:
+    c = load(StringIO(t.FU))
+    assert not c.computes('&')
+    c = c.swap('z05', 'z00').swap(
+        'z02', 'z01'
+    )
     assert c.computes('&')
 
 
