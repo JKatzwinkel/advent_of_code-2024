@@ -112,3 +112,9 @@ def test_large_circuit() -> None:
     print(c.wires)
     assert c.clock() == '0011111101000'
     assert int(c.clock(), base=2) == 2024
+
+
+if __name__ == '__main__':
+    with open('input.txt') as f:
+        c = load(f)
+    print(int(c.clock(), base=2))
