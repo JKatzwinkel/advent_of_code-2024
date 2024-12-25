@@ -145,3 +145,9 @@ def test_load_example() -> None:
 def test_fitting_pairs() -> None:
     locks, keys = load(StringIO(EXAMPLE))
     assert len(fits(locks, keys)) == 3
+
+
+if __name__ == '__main__':
+    with open('input.txt') as f:
+        locks, keys = load(f)
+    print(len(fits(locks, keys)))
