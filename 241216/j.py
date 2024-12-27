@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from functools import reduce
 from io import StringIO, TextIOBase
+import itertools
 from textwrap import dedent
 from typing import NamedTuple, Self
 
@@ -36,7 +38,12 @@ class Maze:
 
     def __getitem__(self, pos: tuple[int, int]) -> str:
         x, y = pos
-        return self.tiles[x+y*self.width]
+        try:
+            return self.tiles[x+y*self.width]
+        except IndexError:
+            raise IndexError(
+                f'out of bounds: {pos}'
+            )
 
     def solve(self) -> Path:
         return Pathfinder(self).find().path
@@ -48,12 +55,15 @@ class Maze:
         tiles = self._lines()
         if path:
             tmpl = '\033[32m{}\033[00m' if ansi else '{}'
-            for pos, direction in path.steps:
-                x, y = pos
+            for q, p in zip(
+                path.steps[1:], path.steps[:-1]
+            ):
+                d = direction(p, q)
+                x, y = p
                 if tiles[y][x] in 'SE':
                     continue
                 tiles[y][x] = tmpl.format(
-                    ARROWS[direction]
+                    ARROWS[d]
                 )
         return '\n'.join(
             ''.join(row) for row in tiles
@@ -70,9 +80,11 @@ class Maze:
 DIRS = [(0, -1), (1, 0), (0, 1), (-1, 0)]
 ARROWS = '^>v<'
 
+type P = tuple[int, int]
+
 
 def step(
-    pos: tuple[int, int], direction: int
+    pos: P, direction: int
 ) -> tuple[int, int]:
     '''
     >>> step((5, 5), -1)
@@ -83,114 +95,162 @@ def step(
     return x, y
 
 
-class Pathfinder:
-    Node = NamedTuple(
-        'Node', [
-            ('direction', int),
-            ('cost', int)
-        ]
+def direction(a: P, b: P) -> int:
+    '''
+    >>> direction((4, 2), (3, 2))
+    3
+    >>> direction((3, 3), (3, 2))
+    0
+    '''
+    dx, dy = b[0] - a[0], b[1] - a[1]
+    v = (
+        0 if not dx else dx // abs(dx),
+        0 if not dy else dy // abs(dy),
     )
+    return DIRS.index(v)
 
+
+class Pathfinder:
     def __init__(self, maze: Maze) -> None:
         self.maze = maze
-        self.frontier = {
-            self.maze.start: self.__class__.Node(1, 0)
-        }
+        start = self.maze.start
+        self.frontier = [(start, step(start, 3), 0)]
         self.visited: dict[
-            tuple[int, int], Pathfinder.Node
-        ] = {}
-        self.results: list[Path] = []
-
-    def _probe(
-        self, pos: tuple[int, int], direction: int,
-        cost: int
-    ) -> None:
-        if self.maze[pos] == '#':
-            return
-        current = self.frontier.get(
-            pos, self.visited.get(pos)
-        )
-        if not current or current.cost > cost:
-            self.frontier[pos] = self.__class__.Node(
-                direction, cost
-            )
-
-    def go(self) -> Self:
-        pos, node = min(
-            self.frontier.items(), key=lambda t: t[1][1]
-        )
-        self.frontier.pop(pos)
-        current = self.visited.get(pos)
-        if not current or current.cost > node.cost:
-            self.visited[pos] = self.__class__.Node(
-                node.direction, node.cost
-            )
-        if self.maze[pos] == 'E':
-            self.backtrack(pos)
-            return self
-        for turn in range(-1, 2):
-            fee = 1 + 1000 * abs(turn)
-            adj = step(pos, node.direction + turn)
-            self._probe(
-                adj, node.direction + turn,
-                node.cost + fee
-            )
-        return self
+            P, set[tuple[P, int]]
+        ] = defaultdict(set)
+        self.results: set[Path] = set()
 
     def find(self) -> Self:
         while self.frontier:
-            self.go()
+            self.search()
         return self
 
-    def backtrack(self, pos: tuple[int, int]) -> Self:
-        direction, cost = self.visited[pos]
-        path = [(pos, direction)]
-        while pos != self.maze.start:
-            pos = step(pos, direction + 2)
-            path.append((pos, direction))
-            direction, _ = self.visited[pos]
-        self.results.append(Path(path[::-1], cost))
+    def search(self) -> bool:
+        self.frontier.remove(
+            candidate := min(
+                self.frontier, key=lambda c: c[2]
+            )
+        )
+        pos, prev, cost = candidate
+        # print(f'visiting {pos} from {prev} for {cost}')
+        if self.is_improvement(pos, cost):
+            self.visited[pos].add(
+                (prev, cost)
+            )
+            if self.maze[pos] == 'E':
+                self.backtrack(pos, cost)
+                return True
+        d = direction(prev, pos)
+        for t in range(-1, 2):
+            steppy = step(pos, d + t)
+            steppy_cost = cost + 1 + abs(t) * 1000
+            if not self.is_improvement(
+                steppy, steppy_cost
+            ):
+                continue
+            self.frontier.append(
+                (steppy, pos, steppy_cost)
+            )
+        return True
+
+    def is_improvement(self, pos: P, cost: int) -> bool:
+        if self.maze[pos] == '#':
+            return False
+        if pos not in self.visited:
+            return True
+        best = min(
+            self.visited[pos], key=lambda t: t[1]
+        )[1]
+        return cost <= best
+
+    def backtrack(self, pos: P, cost: int) -> Self:
+        for path in self._backtrack(
+            pos, [Path([pos], 0)]
+        ):
+            self.results.add(
+                Path(path.steps[1:], path.cost - 1)
+            )
+        cheapest = min(
+            path.cost for path in self.results
+        )
+        self.results = set([
+            path for path in self.results
+            if path.cost == cheapest
+        ])
+        print('results: ', self.results)
         return self
+
+    def _backtrack(
+        self, pos: P, paths: list[Path]
+    ) -> list[Path]:
+        # print('pos: ', pos)
+        # print('paths: ', paths)
+        origins = self.visited[pos]
+        if not origins:
+            return paths
+        # print('origins: ', origins)
+        cheapest = min(t[1] for t in origins)
+        prevs = [
+            t[0] for t in origins if t[1] == cheapest
+        ]
+        paths = reduce(
+            list.__add__,
+            (
+                self._backtrack(
+                    prev, [
+                        path.prepend(prev)
+                        for prev, path
+                        in itertools.product(
+                            [prev], paths
+                        )
+                    ]
+                )
+                for prev in prevs
+            )
+        )
+        return paths
 
     @property
     def path(self) -> Path:
         return min(self.results, key=lambda p: p.cost)
 
-    def __str__(self) -> str:
-        def _plot(
-            nodes: dict[tuple[int, int], Pathfinder.Node],
-            ansi: str
-        ) -> None:
-            for pos, node in nodes.items():
-                x, y = pos
-                direction, cost = node
-                lines[y][x] = (
-                    f'{ansi}'
-                    f'{ARROWS[direction % 4]}{cost:>4}'
-                    '\033[0m'
-                )
-        lines = [
-            [tile * 5 for tile in line]
-            for line in self.maze._lines()
-        ]
-        _plot(self.visited, '\033[32m')
-        _plot(self.frontier, '\033[34m')
-        return '\n'.join(
-            ' '.join(line) for line in lines
-        )
-
 
 class Path:
     def __init__(
         self,
-        steps: list[tuple[tuple[int, int], int]],
+        steps: list[P],
         cost: int
     ) -> None:
         self.steps = steps
         self.cost = cost
 
+    def prepend(self, pos: P) -> Path:
+        cost = 1
+        if len(self.steps) > 1:
+            cur_dir = direction(
+                self.steps[0], self.steps[1]
+            )
+            new_dir = direction(
+                pos, self.steps[0]
+            )
+            if cur_dir != new_dir:
+                cost += 1000
+        return Path(
+            [pos] + self.steps, self.cost + cost
+        )
+
     def __len__(self) -> int:
         return len(self.steps)
+
+    def __repr__(self) -> str:
+        return f'Path<{self.steps}, {self.cost}>'
+
+    def __eq__(self, o: object) -> bool:
+        assert type(o) is Path
+        return f'{self}' == f'{o}'
+
+    def __hash__(self) -> int:
+        return hash(tuple(self.steps)) * self.cost
 
 
 @pytest.fixture
@@ -255,10 +315,28 @@ def test_solve() -> None:
     pf = Pathfinder(maze).find()
     assert (4, 1) in pf.visited
     p = maze.solve()
+    assert p.cost == 1004
     assert p.steps == [
-        ((1, 2), 1), ((2, 2), 1), ((3, 2), 1),
-        ((4, 2), 0), ((4, 1), 0)
+        (1, 2), (2, 2), (3, 2),
+        (4, 2), (4, 1)
     ]
+    # assert p.steps == [
+    #     ((1, 2), 1), ((2, 2), 1), ((3, 2), 1),
+    #     ((4, 2), 0), ((4, 1), 0)
+    # ]
+
+
+def test_paths() -> None:
+    maze = load(StringIO(
+        '''
+        ######
+        #...E#
+        #...##
+        #S..##
+        ######'''
+    ))
+    pf = Pathfinder(maze).find()
+    assert len(pf.results) == 3
 
 
 def expect(
@@ -305,6 +383,8 @@ def test_plot_ex1(ex1: StringIO) -> None:
 
 def test_cost_ex1(ex1: StringIO) -> None:
     maze = load(ex1)
+    pf = Pathfinder(maze).find()
+    assert len(pf.results) == 0
     p = maze.solve()
     assert p.cost == 7036
 
