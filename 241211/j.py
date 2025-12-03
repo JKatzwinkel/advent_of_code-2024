@@ -239,5 +239,14 @@ def test_input_length() -> None:
 
 if __name__ == '__main__':
     stones = read('4022724 951333 0 21633 5857 97 702 6')
-    print(len(blink(stones, 25)))
-    print(length_after(stones, blinks=75))
+    import timeit
+    duration = timeit.timeit(
+        lambda: print(length_after(stones, blinks=25)),
+        number=5
+    )
+    print(duration/5)
+    duration = timeit.timeit(
+        lambda: print(length_after(stones, blinks=75)),
+        number=5
+    )
+    print(duration/5)

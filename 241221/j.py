@@ -278,5 +278,5 @@ if __name__ == '__main__':
         '789A',
         '176A',
     ]
-    pads = PUZZLE_PADS
+    pads = [Pad(DIRPAD)] * 25 + [Pad(NUMPAD)]
     print(sum_complexity(pads, codes))

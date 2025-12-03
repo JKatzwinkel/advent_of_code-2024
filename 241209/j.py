@@ -175,7 +175,13 @@ if __name__ == '__main__':
     with open('input.txt') as f:
         dense = f.read().split('\n')[0]
     fs = FS.decode(dense)
-    result_1 = fs.with_block_size_1().compact().checksum()
+    print('compacting...')
+    fs = fs.with_block_size_1().compact()
+    print('computing checksum..')
+    result_1 = fs.checksum()
     print(f'checksum of fragmented fs: {result_1}')
-    result_2 = FS.decode(dense).compact().checksum()
+    print('compacting again...')
+    fs = FS.decode(dense).compact()
+    print('computing checksum..')
+    result_2 = fs.checksum()
     print(f'checksum after non-fragmenting compaction: {result_2}')

@@ -111,7 +111,6 @@ class Machine:
             return (a, b, cost)
         return (0, 0, 0)
 
-
     def cost(self, presses: tuple[int, int]) -> int:
         return sum(
             count * self.__class__.COST[i]

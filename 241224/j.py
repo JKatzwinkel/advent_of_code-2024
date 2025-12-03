@@ -145,8 +145,6 @@ from io import StringIO, TextIOBase
 
 import t
 
-OPS = {'XOR': '^', 'OR': '|', 'AND': '&'}
-
 
 def load(src: TextIOBase) -> Circuit:
     c = Circuit()
@@ -216,14 +214,19 @@ class Circuit:
             )
         )
 
-    def computes(self, op: str) -> bool:
+    def expected_result(self, op: str) -> int:
         x, y = tuple(map(
             self.decimal_input, 'xy'
         ))
         assert type(result := eval(
             f'{x} {op} {y}'
         )) is int
-        return result == dec(self.output())
+        return result
+
+    def computes(self, op: str) -> bool:
+        return self.expected_result(
+            op
+        ) == dec(self.output())
 
     def swap(
         self, wire1: str, wire2: str
@@ -245,6 +248,23 @@ class Circuit:
             result.wires[wire1]
         )
         return result
+
+    def fix(
+        self, op: str, swaps: int
+    ) -> Circuit:
+        ...
+
+    def wrongos(self, op: str) -> list[str]:
+        e = self.expected_result(op)
+        bits = str(
+            bin(dec(self.output()) ^ e)
+        )[::-1]
+        return [
+            f'z{i:>02}' for i, b in enumerate(
+                bits.split('b')[0]
+            )
+            if b == '1'
+        ]
 
 
 def gate(op: Op, a: bool, b: bool) -> bool:
@@ -302,9 +322,17 @@ def test_large_circuit() -> None:
     assert int(c.output(), base=2) == 2024
 
 
+def test_large_circuit_wrongos() -> None:
+    c = load(StringIO(t.LARGE))
+    print(c.wrongos('+'))
+    assert False
+
+
 def test_circuit_input() -> None:
     c = load(StringIO(t.FU))
     assert not c.computes('&')
+    print(c.wrongos('&'))
+    assert False
     c = load(StringIO(t.FU_FIXED))
     assert c.computes('&')
 
