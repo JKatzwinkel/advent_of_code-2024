@@ -52,5 +52,5 @@ def maxat(s: str) -> tuple[int, int]:
 
 if __name__ == '__main__':
     banks = pathlib.Path('input.txt').read_text().split()
-    result = sum(joltage(bank) for bank in banks)
-    print(result)
+    print(sum(joltage(bank) for bank in banks))
+    print(sum(joltage(bank, 12) for bank in banks))
