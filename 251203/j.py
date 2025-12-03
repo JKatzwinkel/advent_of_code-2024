@@ -1,3 +1,5 @@
+import pathlib
+
 import pytest
 
 
@@ -25,3 +27,9 @@ def maxat(s: str) -> tuple[int, int]:
         if (n := int(c)) > m:
             m, j = n, i
     return m, j
+
+
+if __name__ == '__main__':
+    banks = pathlib.Path('input.txt').read_text().split()
+    result = sum(joltage(bank) for bank in banks)
+    print(result)
