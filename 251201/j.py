@@ -39,7 +39,7 @@ def test_example2b(sequence: list[str], zeros: int) -> None:
 
 
 def test_example2c() -> None:
-    assert dial2(pathlib.Path('input.txt').read_text().split()) < 6707
+    assert dial2(pathlib.Path('input.txt').read_text().split()) == 6689
 
 
 def dialize(code: str) -> int:
@@ -59,11 +59,16 @@ def dial(sequence: list[str]) -> int:
 def dial2(sequence: list[str], p: int = 50) -> int:
     zc = 0
     for d in map(dialize, sequence):
-        np = p + d
-        zeros, p = divmod(np, 100)
-        zc += abs(zeros)
-    if d < 0 and p == 0:
-        zc += 1
+        s = -1 if d < 0 else 1
+        while d:
+            p += s
+            d -= s
+            if p == 100:
+                p = 0
+            if p == -1:
+                p = 99
+            if p == 0:
+                zc += 1
     return zc
 
 
