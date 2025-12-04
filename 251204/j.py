@@ -26,6 +26,17 @@ x.@@@.@@@@
 .@@@@@@@@.
 x.x.@@@.x.'''
 
+D = '''\
+..........
+..........
+...x@@....
+...@@@@...
+...@@@@@..
+...@.@.@@.
+...@@.@@@.
+...@@@@@..
+....@@@...'''
+
 
 def load(text: str) -> Grid:
     '''
@@ -122,6 +133,37 @@ def test_rm() -> None:
     g = load(X)
     c = g.remove(g.find_accessibles())
     assert f'{c}' == S
+
+
+def work(g: Grid) -> tuple[Grid, int]:
+    '''
+    >>> c, r = work(load(X))
+    >>> r
+    13
+    '''
+    axs = g.find_accessibles()
+    c = g.remove(axs)
+    return (c, len(axs))
+
+
+def test_being_done() -> None:
+    g = load(D)
+    c, r = work(g)
+    assert not r, f'{c}'
+
+
+def workywork(g: Grid) -> list[tuple[Grid, int]]:
+    '''
+    >>> steps = workywork(load(X))
+    >>> [step[-1] for step in steps]
+    [13, 12, 7, 5, 2, 1, 1, 1, 1]
+    '''
+    steps = []
+    c, r = work(g)
+    while r:
+        steps.append((c, r))
+        c, r = work(c)
+    return steps
 
 
 if __name__ == '__main__':
