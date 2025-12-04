@@ -152,16 +152,18 @@ def test_being_done() -> None:
     assert not r, f'{c}'
 
 
-def workywork(g: Grid) -> list[tuple[Grid, int]]:
+def workywork(g: Grid) -> list[int]:
     '''
-    >>> steps = workywork(load(X))
-    >>> [step[-1] for step in steps]
+    >>> workywork(load(X))
     [13, 12, 7, 5, 2, 1, 1, 1, 1]
+
+    >>> sum(workywork(load(X)))
+    43
     '''
     steps = []
     c, r = work(g)
     while r:
-        steps.append((c, r))
+        steps.append(r)
         c, r = work(c)
     return steps
 
@@ -169,3 +171,4 @@ def workywork(g: Grid) -> list[tuple[Grid, int]]:
 if __name__ == '__main__':
     g = load(pathlib.Path('input.txt').read_text())
     print(len(g.find_accessibles()))
+    print(sum(workywork(g)))
