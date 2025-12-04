@@ -1,7 +1,8 @@
 from __future__ import annotations
+import pathlib
 
 
-X = '''
+X = '''\
 ..@@.@@@@.
 @@@.@.@.@@
 @@@@@.@.@@
@@ -13,7 +14,7 @@ X = '''
 .@@@@@@@@.
 @.@.@@@.@.'''
 
-S = '''
+S = '''\
 ..xx.xx@x.
 x@@.@.@.@@
 @@@@@.x.@@
@@ -54,6 +55,13 @@ class Grid:
         x, y = pos
         return self.data[x+y*self.width]
 
+    def __setitem__(self, pos: tuple[int, int], s: str) -> None:
+        if pos not in self:
+            return
+        x, y = pos
+        i = x+y*self.width
+        self.data = self.data[:i] + s[:1] + self.data[i+1:]
+
     def __contains__(self, pos: tuple[int, int]) -> bool:
         x, y = pos
         return 0 <= x < self.width and 0 <= y < self.height
@@ -73,7 +81,7 @@ class Grid:
                     return count
         return count
 
-    def find_accessables(self) -> list[tuple[int, int]]:
+    def find_accessibles(self) -> list[tuple[int, int]]:
         result = []
         for y in range(self.height):
             for x in range(self.width):
@@ -83,7 +91,39 @@ class Grid:
                     result.append((x, y))
         return result
 
+    def remove(self, xx: list[tuple[int, int]]) -> Grid:
+        result: Grid = self.__class__.__new__(self.__class__)
+        result.width = self.width
+        result.height = self.height
+        result.data = self.data
+        for x in xx:
+            result[x] = 'x'
+        return result
+
+    def __str__(self) -> str:
+        rows = [
+            self.data[y*self.width:(y+1)*self.width]
+            for y in range(self.height)
+        ]
+        return '\n'.join(rows)
+
+
+def test_io() -> None:
+    g = load(X)
+    assert f'{g}' == X
+
 
 def test_part1() -> None:
     g = load(X)
-    assert len(g.find_accessables()) == 13
+    assert len(g.find_accessibles()) == 13
+
+
+def test_rm() -> None:
+    g = load(X)
+    c = g.remove(g.find_accessibles())
+    assert f'{c}' == S
+
+
+if __name__ == '__main__':
+    g = load(pathlib.Path('input.txt').read_text())
+    print(len(g.find_accessibles()))
