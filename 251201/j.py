@@ -1,5 +1,7 @@
 import pathlib
 
+import pytest
+
 
 X = '''
 L68
@@ -23,8 +25,21 @@ def test_example2() -> None:
     assert dial2(X.split()) == 6
 
 
-def test_example2b() -> None:
-    assert dial2(['R1000']) == 10
+@pytest.mark.parametrize(
+    'sequence,zeros', (
+        (['R1000'], 10),
+        (['R1000', 'L50'], 11),
+        (['L51'], 1),
+        (['L50'], 1),
+        (['R50'], 1),
+    )
+)
+def test_example2b(sequence: list[str], zeros: int) -> None:
+    assert dial2(sequence) == zeros
+
+
+def test_example2c() -> None:
+    assert dial2(pathlib.Path('input.txt').read_text().split()) < 6707
 
 
 def dialize(code: str) -> int:
@@ -41,15 +56,17 @@ def dial(sequence: list[str]) -> int:
     return zc
 
 
-def dial2(sequence: list[str]) -> int:
-    p, zc = 50, 0
+def dial2(sequence: list[str], p: int = 50) -> int:
+    zc = 0
     for d in map(dialize, sequence):
         np = p + d
         zeros, p = divmod(np, 100)
         zc += abs(zeros)
+    if d < 0 and p == 0:
+        zc += 1
     return zc
 
 
 if __name__ == '__main__':
-    result = dial(pathlib.Path('input.txt').read_text().split())
-    print(result)
+    print(dial(pathlib.Path('input.txt').read_text().split()))
+    print(dial2(pathlib.Path('input.txt').read_text().split()))
