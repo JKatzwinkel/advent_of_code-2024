@@ -39,3 +39,29 @@ def inv(n: int) -> bool:
     if (ll := len(s)) % 2:
         return False
     return s[:ll//2] == s[ll//2:]
+
+
+def invs(r: tuple[int, int]) -> list[int]:
+    '''
+    >>> invs((11, 22))
+    [11, 22]
+    >>> invs((95, 115))
+    [99]
+    >>> invs((1188511880, 1188511890))
+    [1188511885]
+    >>> invs((1698522, 1698528))
+    []
+    '''
+    return list(filter(inv, range(r[0], r[1]+1)))
+
+
+def all_invalids(ranges: list[tuple[int, int]]) -> list[int]:
+    result = []
+    for r in ranges:
+        result.extend(invs(r))
+    return result
+
+
+def test_invs() -> None:
+    rr = read_input(X)
+    assert sum(all_invalids(rr)) == 1227775554
