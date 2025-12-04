@@ -1,3 +1,6 @@
+import pathlib
+
+
 X = '''\
 11-22,95-115,998-1012,1188511880-1188511890,222220-222224,
 1698522-1698528,446443-446449,38593856-38593862,565653-565659,
@@ -56,12 +59,14 @@ def invs(r: tuple[int, int]) -> list[int]:
 
 
 def all_invalids(ranges: list[tuple[int, int]]) -> list[int]:
-    result = []
-    for r in ranges:
-        result.extend(invs(r))
-    return result
+    return [i for r in ranges for i in invs(r)]
 
 
 def test_invs() -> None:
     rr = read_input(X)
     assert sum(all_invalids(rr)) == 1227775554
+
+
+if __name__ == '__main__':
+    rr = read_input(pathlib.Path('input.txt').read_text())
+    print(sum(all_invalids(rr)))
