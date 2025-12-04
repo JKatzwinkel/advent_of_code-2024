@@ -18,3 +18,24 @@ def read_input(src: str) -> list[tuple[int, int]]:
     [(11, 22), (95, 115)]
     '''
     return list(map(read_range, src.split(',')))
+
+
+def inv(n: int) -> bool:
+    '''
+    >>> inv(11)
+    True
+    >>> inv(101)
+    False
+    >>> inv(1010)
+    True
+    >>> inv(222222)
+    True
+    >>> inv(446446)
+    True
+    >>> inv(446443)
+    False
+    '''
+    s = f'{n}'
+    if (ll := len(s)) % 2:
+        return False
+    return s[:ll//2] == s[ll//2:]
