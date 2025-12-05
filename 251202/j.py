@@ -1,4 +1,7 @@
+from functools import partial
 import pathlib
+
+import pytest
 
 
 X = '''\
@@ -23,7 +26,7 @@ def read_input(src: str) -> list[tuple[int, int]]:
     return list(map(read_range, src.split(',')))
 
 
-def inv(n: int) -> bool:
+def inv(n: int, strict: bool = False) -> bool:
     '''
     >>> inv(11)
     True
@@ -39,34 +42,65 @@ def inv(n: int) -> bool:
     False
     '''
     s = f'{n}'
-    if (ll := len(s)) % 2:
-        return False
-    return s[:ll//2] == s[ll//2:]
+    ll = len(s)
+    lim = ll if strict else 2
+    for x in range(2, lim+1):
+        if ll % x:
+            continue
+        partitions = set()
+        for i in range(0, ll, ll//x):
+            partitions.add(s[i:i+ll//x])
+        if len(partitions) == 1:
+            return True
+    return False
 
 
-def invs(r: tuple[int, int]) -> list[int]:
+def invs(
+    r: tuple[int, int], strict: bool = False
+) -> list[int]:
     '''
     >>> invs((11, 22))
     [11, 22]
     >>> invs((95, 115))
     [99]
+    >>> invs((95, 115), strict=True)
+    [99, 111]
     >>> invs((1188511880, 1188511890))
     [1188511885]
     >>> invs((1698522, 1698528))
     []
+    >>> invs((2121212118, 2121212124), strict=True)
+    [2121212121]
+    >>> invs((824824821, 824824827), strict=True)
+    [824824824]
     '''
-    return list(filter(inv, range(r[0], r[1]+1)))
+    f = partial(inv, strict=strict)
+    return list(filter(f, range(r[0], r[1]+1)))
 
 
-def all_invalids(ranges: list[tuple[int, int]]) -> list[int]:
-    return [i for r in ranges for i in invs(r)]
+def all_invalids(
+    ranges: list[tuple[int, int]],
+    strict: bool = False,
+) -> list[int]:
+    return [
+        i for r in ranges
+        for i in invs(r, strict=strict)
+    ]
 
 
-def test_invs() -> None:
+@pytest.mark.parametrize(
+    'strict,expect', (
+        (False,  1227775554),
+        (True, 4174379265),
+    )
+)
+def test_invs(strict: bool, expect: int) -> None:
     rr = read_input(X)
-    assert sum(all_invalids(rr)) == 1227775554
+    assert sum(
+        all_invalids(rr, strict=strict)
+    ) == expect
 
 
 if __name__ == '__main__':
     rr = read_input(pathlib.Path('input.txt').read_text())
-    print(sum(all_invalids(rr)))
+    print(sum(all_invalids(rr, strict=True)))
