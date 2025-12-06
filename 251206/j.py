@@ -5,10 +5,10 @@ X = '''\
 *   +   *   +  '''
 
 
-type PROBLEM = tuple[str, *tuple[int, ...]]
+type Problem = tuple[str, *tuple[int, ...]]
 
 
-def load(src: str) -> list[PROBLEM]:
+def load(src: str) -> list[Problem]:
     '''
     >>> load(X)[0]
     ('*', 123, 45, 6)
@@ -16,14 +16,14 @@ def load(src: str) -> list[PROBLEM]:
     rows = [row.split() for row in src.split('\n')]
     result = []
     for i, op in enumerate(rows[-1]):
-        prob: PROBLEM = (
+        prob: Problem = (
             op, *[int(row[i]) for row in rows[:-1]]
         )
         result.append(prob)
     return result
 
 
-def solve(prob: PROBLEM) -> int:
+def solve(prob: Problem) -> int:
     '''
     >>> [solve(p) for p in load(X)]
     [33210, 490, 4243455, 401]
@@ -33,3 +33,11 @@ def solve(prob: PROBLEM) -> int:
         result := eval(op.join(map(str, rands))), int
     )
     return result
+
+
+def solve_all(probs: list[Problem]) -> int:
+    '''
+    >>> solve_all(load(X))
+    4277556
+    '''
+    return sum(map(solve, probs))
