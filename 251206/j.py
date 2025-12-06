@@ -1,8 +1,12 @@
+import pathlib
+
+
 X = '''\
 123 328  51 64
  45 64  387 23
   6 98  215 314
-*   +   *   +  '''
+*   +   *   +
+'''
 
 
 type Problem = tuple[str, *tuple[int, ...]]
@@ -13,7 +17,7 @@ def load(src: str) -> list[Problem]:
     >>> load(X)[0]
     ('*', 123, 45, 6)
     '''
-    rows = [row.split() for row in src.split('\n')]
+    rows = [row.split() for row in src.split('\n') if row]
     result = []
     for i, op in enumerate(rows[-1]):
         prob: Problem = (
@@ -41,3 +45,8 @@ def solve_all(probs: list[Problem]) -> int:
     4277556
     '''
     return sum(map(solve, probs))
+
+
+if __name__ == '__main__':
+    probs = load(pathlib.Path('input.txt').read_text())
+    print(solve_all(probs))
