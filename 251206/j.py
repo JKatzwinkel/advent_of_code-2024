@@ -91,5 +91,8 @@ def solve_all(probs: list[Problem]) -> int:
 
 
 if __name__ == '__main__':
-    probs = load(pathlib.Path('input.txt').read_text())
+    probs = load(
+        pathlib.Path('input.txt').read_text(),
+        cephmode=True,
+    )
     print(solve_all(probs))
