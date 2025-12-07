@@ -1,0 +1,76 @@
+from pathlib import Path
+
+
+X = '''\
+.......S.......
+...............
+.......^.......
+...............
+......^.^......
+...............
+.....^.^.^.....
+...............
+....^.^...^....
+...............
+...^.^...^.^...
+...............
+..^...^.....^..
+...............
+.^.^.^.^.^...^.
+...............'''
+
+
+S = '''\
+.......S.......
+.......|.......
+......|^|......
+......|.|......
+.....|^|^|.....
+.....|.|.|.....
+....|^|^|^|....
+....|.|.|.|....
+...|^|^|||^|...
+...|.|.|||.|...
+..|^|^|||^|^|..
+..|.|.|||.|.|..
+.|^|||^||.||^|.
+.|.|||.||.||.|.
+|^|^|^|^|^|||^|
+|.|.|.|.|.|||.|'''
+
+
+def trace(manifold: list[str]) -> tuple[list[str], int]:
+    '''
+    >>> manifold, splits = trace(X.split('\\n'))
+
+    >>> splits
+    21
+
+    '''
+    splits = 0
+    above = manifold[0]
+    result = [above]
+    for line in manifold[1:]:
+        cells = ['.'] * len(line)
+        for i, c in enumerate(line):
+            if above[i] in ('|', 'S'):
+                if c == '.':
+                    cells[i] = '|'
+                elif c == '^':
+                    cells[i-1:i+2] = ['|', '^', '|']
+                    splits += 1
+            elif c == '^':
+                cells[i] = c
+        result.append(above := ''.join(cells))
+    return result, splits
+
+
+def test_tracing() -> None:
+    manifold, splits = trace(X.split('\n'))
+    assert manifold == S.split('\n')
+    assert '\n'.join(manifold) == S
+
+
+if __name__ == '__main__':
+    manifold, splits = trace(Path('input.txt').read_text().split())
+    print(splits)
