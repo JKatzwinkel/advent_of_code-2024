@@ -68,6 +68,44 @@ def closest_pairs(points: list[Point]) -> list[tuple[Point, Point]]:
     )
 
 
+def connect(
+    points: list[Point], steps: int = -1,
+) -> list[set[Point]]:
+    '''
+    >>> cc = connect(load(X), steps=2)
+    >>> len(cc)
+    18
+    >>> len(cc[0])
+    3
+
+    >>> cc = connect(load(X), steps=3)
+    >>> len(cc)
+    17
+    >>> len(cc[0])
+    3
+    >>> len(cc[1])
+    2
+
+    >>> cc = connect(load(X), steps=10)
+    >>> len(cc)
+    11
+    >>> [len(c) for c in cc]
+    >>> len(cc[0])
+    5
+    '''
+    circuits = {p: {p} for p in points}
+    cp = closest_pairs(points)
+    for i, (a, b) in enumerate(cp):
+        if i == steps:
+            break
+        circuits[a].update(circuits[b])
+        circuits[b] = circuits[a]
+    return sorted(
+        set(frozenset(v) for v in circuits.values()),  # type: ignore
+        key=len, reverse=True,
+    )
+
+
 if __name__ == '__main__':
     cp = closest_pairs(load(X))
     for i, (a, b) in enumerate(cp):
