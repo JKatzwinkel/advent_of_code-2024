@@ -115,6 +115,6 @@ def test_3_largest_circuits() -> None:
 
 
 if __name__ == '__main__':
-    cc = connect(load(Path('input.txt').read_text()), steps=1000)
-    prod = reduce(int.__mul__, map(len, cc[:3]))
-    print(prod)
+    cp = closest_pairs(load(X))
+    for i, (a, b) in enumerate(cp):
+        print(f'{i}: {a} {b} - {distance(a, b)}')
