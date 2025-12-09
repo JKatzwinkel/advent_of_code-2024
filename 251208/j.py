@@ -1,3 +1,4 @@
+from functools import reduce
 import itertools
 
 
@@ -90,20 +91,25 @@ def connect(
     >>> len(cc)
     11
     >>> [len(c) for c in cc]
-    >>> len(cc[0])
-    5
+    [5, 4, 2, 2, 1, 1, 1, 1, 1, 1, 1]
     '''
     circuits = {p: {p} for p in points}
     cp = closest_pairs(points)
     for i, (a, b) in enumerate(cp):
         if i == steps:
             break
-        circuits[a].update(circuits[b])
-        circuits[b] = circuits[a]
+        circuits[b] |= circuits[a]
+        for p in circuits[b]:
+            circuits[p] = circuits[b]
     return sorted(
         set(frozenset(v) for v in circuits.values()),  # type: ignore
         key=len, reverse=True,
     )
+
+
+def test_3_largest_circuits() -> None:
+    cc = connect(load(X), steps=10)
+    assert reduce(int.__mul__, map(len, cc[:3])) == 40
 
 
 if __name__ == '__main__':
