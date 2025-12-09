@@ -1,5 +1,5 @@
 from functools import reduce
-from itertools import combinations
+from itertools import combinations, dropwhile, product
 from pathlib import Path
 
 X = '''
@@ -101,7 +101,7 @@ def left(a: Point, b: Point) -> Point:
     return sig(b[1] - a[1]), sig(a[0] - b[0])
 
 
-def out(corner: tuple[Point, Point, Point]) -> Point:
+def out(corner: list[Point]) -> Point:
     '''
     >>> pp = load(X)
     >>> out(pp[:3])
@@ -116,6 +116,58 @@ def out(corner: tuple[Point, Point, Point]) -> Point:
             left(*corner[:2]), left(*corner[1:3])
         )
     )
+
+
+def rect(a: Point, b: Point) -> list[Point]:
+    '''
+    >>> rect((2, 5), (9, 7))
+    [(2, 5), (2, 7), (9, 5), (9, 7)]
+    '''
+    return list(product(*zip(a, b)))  # type: ignore
+
+
+def fence(posts: list[Point]) -> dict[Point, Point]:
+    '''
+    >>> f = fence(load(X))
+    >>> f[7, 1]
+    (-1, -1)
+    '''
+    result = dict()
+    posts = [posts[-1]] + posts
+    for i in range(1, len(posts) - 1):
+        result[posts[i]] = out(posts[i-1:i+2])
+    return result
+
+
+def go(p: Point, v: Point) -> Point:
+    '''
+    >>> go((7, 1), (-1, -1))
+    (6, 0)
+    '''
+    return p[0] + v[0], p[1] + v[1]
+
+
+def outside(
+    a: Point, b: Point, facing: dict[Point, Point]
+) -> bool:
+    box = rect(a, b)
+    for p in box:
+
+
+
+def bigrect_inside(points: list[Point]) -> tuple[int, Point, Point]:
+    '''
+    >>> bigrect_inside(load(X))
+    (24, (9, 5), (2, 3))
+    '''
+    pairs = sorted(
+        combinations(points, 2), key=lambda p: area(*p),
+        reverse=True,
+    )
+    f = fence(points)
+    pairs = dropwhile(lambda pair: outside(*pair, f), pairs)
+    a, b = pairs[0]
+    return area(a, b), a, b
 
 
 if __name__ == '__main__':
