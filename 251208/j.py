@@ -1,5 +1,6 @@
 from functools import reduce
 import itertools
+from pathlib import Path
 
 
 X = '''
@@ -98,8 +99,9 @@ def connect(
     for i, (a, b) in enumerate(cp):
         if i == steps:
             break
+        a, b = sorted((a, b), key=lambda p: len(circuits[p]))
         circuits[b] |= circuits[a]
-        for p in circuits[b]:
+        for p in circuits[a]:
             circuits[p] = circuits[b]
     return sorted(
         set(frozenset(v) for v in circuits.values()),  # type: ignore
@@ -113,6 +115,6 @@ def test_3_largest_circuits() -> None:
 
 
 if __name__ == '__main__':
-    cp = closest_pairs(load(X))
-    for i, (a, b) in enumerate(cp):
-        print(f'{i}: {a} {b} - {distance(a, b)}')
+    cc = connect(load(Path('input.txt').read_text()), steps=1000)
+    prod = reduce(int.__mul__, map(len, cc[:3]))
+    print(prod)
