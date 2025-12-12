@@ -49,13 +49,11 @@ def find(
     def recurse(node: str) -> list[list[str]]:
         if node == 'out':
             return [[node]]
-        result = []
-        for adj in edges[node]:
-            if not (rr := recurse(adj)):
-                continue
-            for tail in rr:
-                result.append([node] + tail)
-        return result
+        return [
+            [node] + tail
+            for adj in edges[node]
+            for tail in recurse(adj)
+        ]
     return recurse(start)
 
 
