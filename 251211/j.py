@@ -48,7 +48,7 @@ def find(
     ['you', 'bbb', 'ddd', 'ggg', 'out']
     '''
     def recurse(node: str) -> list[list[str]]:
-        if node == 'out':
+        if node == end:
             return [[node]]
         return [
             [node] + tail
