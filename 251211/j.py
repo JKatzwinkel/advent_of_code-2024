@@ -1,3 +1,4 @@
+from collections import defaultdict
 from pathlib import Path
 
 
@@ -131,6 +132,19 @@ def todot(edges: dict[str, list[str]]) -> str:
         for adj in values
     ]
     return '\n'.join(['digraph G {'] + lines + ['}'])
+
+
+def reverse(edges: dict[str, list[str]]) -> dict[str, list[str]]:
+    '''
+    >>> gg = load('a: b c\\nb: d e\\nc: e')
+    >>> reverse(gg)
+    {'b': ['a'], 'c': ['a'], 'd': ['b'], 'e': ['b', 'c']}
+    '''
+    result = defaultdict(list)
+    for node, adjs in edges.items():
+        for adj in adjs:
+            result[adj].append(node)
+    return dict(result)
 
 
 if __name__ == '__main__':
