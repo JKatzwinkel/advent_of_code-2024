@@ -116,7 +116,25 @@ def test_pathfinding_with_checkpoints() -> None:
     assert ','.join(pp[1]) == 'svr,aaa,fft,ccc,eee,dac,fff,hhh,out'
 
 
+def todot(edges: dict[str, list[str]]) -> str:
+    '''
+    >>> print(todot(load('svr: aaa bbb\\naaa: fft')))
+    digraph G {
+      svr -> aaa;
+      svr -> bbb;
+      aaa -> fft;
+    }
+    '''
+    lines = [
+        f'  {key} -> {adj};'
+        for key, values in edges.items()
+        for adj in values
+    ]
+    return '\n'.join(['digraph G {'] + lines + ['}'])
+
+
 if __name__ == '__main__':
     edges = load(Path('input.txt').read_text())
-    paths = find(edges)
-    print(len(paths))
+    print(todot(edges))
+    # paths = find(edges, 'dac', 'fft', start='svr')
+    # print(len(paths))
