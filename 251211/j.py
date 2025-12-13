@@ -1,4 +1,5 @@
 from collections import defaultdict
+import itertools
 from pathlib import Path
 
 
@@ -51,15 +52,20 @@ def find(
     def recurse(node: str) -> list[list[str]]:
         if node == end:
             return [[node]]
-        return [
+        result = [
             [node] + tail
-            for adj in edges[node]
+            for adj in edges.get(node, [])
             for tail in recurse(adj)
         ]
-    return [
-        tail for tail in recurse(start)
-        if all(checkpoint in tail for checkpoint in checkpoints)
+        if not result:
+            if node in edges:
+                edges.pop(node, [])
+        return result
+    result = [
+        path for path in recurse(start)
+        if all(checkpoint in path for checkpoint in checkpoints)
     ]
+    return result
 
 
 def test_pathfinding() -> None:
@@ -147,8 +153,46 @@ def reverse(edges: dict[str, list[str]]) -> dict[str, list[str]]:
     return dict(result)
 
 
+def part2(
+    edges: dict[str, list[str]],
+    *checkpoints: str,
+    start: str = 'svr',
+    end: str = 'out',
+) -> list[list[str]]:
+    '''
+    >>> gg=load(Y)
+    >>> pp=part2(gg, 'fft', 'dac')
+    >>> len(pp)
+    2
+    >>> ','.join(pp[0])
+    'svr,aaa,fft,ccc,eee,dac,fff,ggg,out'
+    '''
+    tails = find(
+        edges, start=checkpoints[-1], end=end
+    )
+    heads = [
+        reversed(path) for path in find(
+            reverse(edges), start=checkpoints[0], end=start
+        )
+    ]
+    middles = [
+        path[1:-1] for path in find(
+            edges, start=checkpoints[0], end=checkpoints[-1]
+        )
+    ]
+    return [
+        list(itertools.chain(*path))
+        for path in itertools.product(heads, middles, tails)
+    ]
+
+
 if __name__ == '__main__':
     edges = load(Path('input.txt').read_text())
-    print(todot(edges))
-    # paths = find(edges, 'dac', 'fft', start='svr')
+    # paths = find(edges, 'dac', 'fft', start='fft', end='dac')
+    # paths = find(reverse(edges), start='fft', end='svr')  # viable
+    # paths = find(edges, start='dac', end='out')  # viable
+    # paths = find(edges, start='fft', end='dac')
+    paths = part2(edges, 'fft', 'dac')
+    print('\n'.join(' -> '.join(path) for path in paths))
     # print(len(paths))
+    # print(todot(reverse(edges)))
